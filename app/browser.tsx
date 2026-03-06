@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Platform,
-  Share, Linking, Modal, TextInput, ActivityIndicator, ScrollView
+  Share, Linking, Modal, TextInput, ActivityIndicator, ScrollView, Dimensions
 } from "react-native";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -13,9 +13,15 @@ import Colors from "@/constants/colors";
 import { useSearch } from "@/context/SearchContext";
 
 const DESKTOP_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const MOBILE_UA =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+  "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+
+const { width } = Dimensions.get("window");
+
+function getDomain(url: string): string {
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return url.slice(0, 40); }
+}
 
 export default function BrowserScreen() {
   const insets = useSafeAreaInsets();
@@ -23,135 +29,110 @@ export default function BrowserScreen() {
   const { saveItem } = useSearch();
 
   const [currentUrl, setCurrentUrl] = useState(params.url || "https://google.com");
-  const [inputUrl, setInputUrl] = useState(params.url || "");
-  const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [desktopMode, setDesktopMode] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [urlBarFocused, setUrlBarFocused] = useState(false);
-  const [urlInputValue, setUrlInputValue] = useState(params.url || "");
+  const [urlFocused, setUrlFocused] = useState(false);
+  const [urlDraft, setUrlDraft] = useState(params.url || "");
+  const [pageTitle, setPageTitle] = useState("");
 
   const webViewRef = useRef<WebView>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  function getDomain(url: string): string {
-    try {
-      return new URL(url).hostname.replace("www.", "");
-    } catch {
-      return url.slice(0, 30);
-    }
-  }
-
-  function normalizeUrl(raw: string): string {
-    const trimmed = raw.trim();
-    if (!trimmed) return currentUrl;
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-    if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
-    return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
-  }
-
-  const handleNavigationChange = useCallback((nav: WebViewNavigation) => {
+  const onNavigationChange = useCallback((nav: WebViewNavigation) => {
     setCurrentUrl(nav.url);
-    setUrlInputValue(nav.url);
+    setUrlDraft(nav.url);
     setCanGoBack(nav.canGoBack);
     setCanGoForward(nav.canGoForward);
-    setTitle(nav.title || getDomain(nav.url));
+    setPageTitle(nav.title || getDomain(nav.url));
   }, []);
+
+  function normalizeUrl(raw: string): string {
+    const t = raw.trim();
+    if (!t) return currentUrl;
+    if (t.startsWith("http://") || t.startsWith("https://")) return t;
+    if (t.includes(".") && !t.includes(" ")) return `https://${t}`;
+    return `https://www.google.com/search?q=${encodeURIComponent(t)}`;
+  }
+
+  function submitUrl() {
+    const url = normalizeUrl(urlDraft);
+    setCurrentUrl(url);
+    setUrlDraft(url);
+    setUrlFocused(false);
+  }
 
   async function handleShare() {
     setMenuVisible(false);
-    try {
-      await Share.share({ message: currentUrl, url: currentUrl });
-    } catch (_) {}
+    try { await Share.share({ message: currentUrl, url: currentUrl }); } catch (_) {}
   }
 
-  async function handleCopyLink() {
+  async function handleCopy() {
     setMenuVisible(false);
     await Clipboard.setStringAsync(currentUrl);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
-  function handleDesktopToggle() {
-    setMenuVisible(false);
-    setDesktopMode(prev => !prev);
-    webViewRef.current?.reload();
-  }
-
-  function handleTranslate() {
-    setMenuVisible(false);
-    const translateUrl = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
-    setCurrentUrl(translateUrl);
-    setUrlInputValue(translateUrl);
-  }
-
-  function handleOpenInBrowser() {
-    setMenuVisible(false);
-    Linking.openURL(currentUrl);
-  }
-
-  function handleSavePage() {
+  function handleSave() {
     setMenuVisible(false);
     saveItem({
       id: Date.now().toString(),
-      title: title || getDomain(currentUrl),
+      title: pageTitle || getDomain(currentUrl),
       url: currentUrl,
-      description: `Saved from browser - ${getDomain(currentUrl)}`,
+      description: `Saved from ${getDomain(currentUrl)}`,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
-  function handleUrlSubmit() {
-    const url = normalizeUrl(urlInputValue);
-    setCurrentUrl(url);
-    setUrlInputValue(url);
-    setUrlBarFocused(false);
+  function handleDesktop() {
+    setMenuVisible(false);
+    setDesktopMode(d => !d);
+    setTimeout(() => webViewRef.current?.reload(), 100);
   }
 
-  const translateJs = `
-    (function() {
-      var script = document.createElement('script');
-      script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      document.body.appendChild(script);
-    })();
-  `;
+  function handleTranslate() {
+    setMenuVisible(false);
+    const url = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
+    setCurrentUrl(url);
+    setUrlDraft(url);
+  }
+
+  function handleOpenBrowser() {
+    setMenuVisible(false);
+    Linking.openURL(currentUrl);
+  }
+
+  const menuOptions = [
+    { icon: "arrow-undo-outline", label: "Back to Search", action: () => { setMenuVisible(false); router.back(); } },
+    { icon: "share-social-outline", label: "Share", action: handleShare },
+    { icon: "copy-outline", label: "Copy Link", action: handleCopy },
+    { icon: "bookmark-outline", label: "Save Page", action: handleSave },
+    { icon: desktopMode ? "phone-portrait-outline" : "desktop-outline", label: desktopMode ? "Mobile Site" : "Desktop Site", action: handleDesktop },
+    { icon: "language-outline", label: "Translate Page", action: handleTranslate },
+    { icon: "open-outline", label: "Open in Browser", action: handleOpenBrowser },
+  ];
 
   return (
-    <View style={[styles.container, { backgroundColor: "#000" }]}>
-      <View style={[styles.topBar, { paddingTop: topPad }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-          <Ionicons name="close" size={20} color={Colors.light.text} />
-        </TouchableOpacity>
-        <View style={styles.titleArea}>
-          <Text style={styles.titleText} numberOfLines={1}>
-            {loading ? "Loading..." : getDomain(currentUrl)}
-          </Text>
-          {loading && <ActivityIndicator size="small" color={Colors.light.tint} style={{ marginLeft: 6 }} />}
-        </View>
-        <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMenuVisible(true); }} style={styles.navBtn}>
-          <Ionicons name="ellipsis-vertical" size={20} color={Colors.light.text} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <View style={{ height: topPad, backgroundColor: "#FFF" }} />
 
       {loading && (
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
         </View>
       )}
 
       {Platform.OS === "web" ? (
         <View style={styles.webFallback}>
-          <MaterialCommunityIcons name="web" size={48} color={Colors.light.textMuted} />
-          <Text style={styles.webFallbackText}>WebView not available on web</Text>
-          <TouchableOpacity
-            style={styles.openInBrowserBtn}
-            onPress={() => Linking.openURL(currentUrl)}
-          >
-            <Text style={styles.openInBrowserText}>Open in Browser</Text>
+          <Ionicons name="globe-outline" size={52} color={Colors.light.textMuted} />
+          <Text style={styles.webFallbackTitle}>Can't show this page here</Text>
+          <TouchableOpacity style={styles.openBtn} onPress={() => Linking.openURL(currentUrl)}>
+            <Text style={styles.openBtnText}>Open in Browser</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -159,48 +140,49 @@ export default function BrowserScreen() {
           ref={webViewRef}
           source={{ uri: currentUrl }}
           style={styles.webview}
-          onLoadStart={() => setLoading(true)}
+          onLoadStart={() => { setLoading(true); setProgress(0); }}
           onLoadEnd={() => setLoading(false)}
           onLoadProgress={({ nativeEvent }) => setProgress(nativeEvent.progress)}
-          onNavigationStateChange={handleNavigationChange}
+          onNavigationStateChange={onNavigationChange}
           userAgent={desktopMode ? DESKTOP_UA : MOBILE_UA}
           javaScriptEnabled
           domStorageEnabled
           allowsBackForwardNavigationGestures
           sharedCookiesEnabled
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          onError={() => setLoading(false)}
         />
       )}
 
-      <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-        <View style={styles.navButtons}>
-          <TouchableOpacity
-            onPress={() => webViewRef.current?.goBack()}
-            style={[styles.navBtn, !canGoBack && styles.navBtnDisabled]}
-            disabled={!canGoBack}
-          >
-            <Ionicons name="chevron-back" size={22} color={canGoBack ? Colors.light.text : Colors.light.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => webViewRef.current?.goForward()}
-            style={[styles.navBtn, !canGoForward && styles.navBtnDisabled]}
-            disabled={!canGoForward}
-          >
-            <Ionicons name="chevron-forward" size={22} color={canGoForward ? Colors.light.text : Colors.light.textMuted} />
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.bottomBar, { paddingBottom: botPad + 6 }]}>
+        <TouchableOpacity
+          onPress={() => { if (canGoBack) webViewRef.current?.goBack(); else router.back(); }}
+          style={styles.navBtn}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={22}
+            color={canGoBack ? Colors.light.text : Colors.light.tint}
+          />
+        </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.urlBar}
-          onPress={() => setUrlBarFocused(true)}
-          activeOpacity={0.85}
+          onPress={() => { if (canGoForward) webViewRef.current?.goForward(); }}
+          style={[styles.navBtn, !canGoForward && styles.navBtnDim]}
+          disabled={!canGoForward}
         >
-          {urlBarFocused ? (
+          <Ionicons name="chevron-forward" size={22} color={canGoForward ? Colors.light.text : Colors.light.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.urlBar} onPress={() => setUrlFocused(true)} activeOpacity={0.85}>
+          {urlFocused ? (
             <TextInput
               style={styles.urlInput}
-              value={urlInputValue}
-              onChangeText={setUrlInputValue}
-              onSubmitEditing={handleUrlSubmit}
-              onBlur={() => setUrlBarFocused(false)}
+              value={urlDraft}
+              onChangeText={setUrlDraft}
+              onSubmitEditing={submitUrl}
+              onBlur={() => setUrlFocused(false)}
               autoFocus
               autoCapitalize="none"
               autoCorrect={false}
@@ -209,47 +191,55 @@ export default function BrowserScreen() {
               selectTextOnFocus
             />
           ) : (
-            <>
-              <Ionicons name="lock-closed" size={12} color={Colors.light.textMuted} />
-              <Text style={styles.urlText} numberOfLines={1}>
-                {getDomain(currentUrl)}
-              </Text>
-            </>
+            <View style={styles.urlDisplay}>
+              {loading ? (
+                <ActivityIndicator size="small" color={Colors.light.tint} style={{ marginRight: 6 }} />
+              ) : (
+                <Ionicons name="lock-closed" size={11} color="#22C55E" style={{ marginRight: 4 }} />
+              )}
+              <Text style={styles.urlText} numberOfLines={1}>{getDomain(currentUrl)}</Text>
+            </View>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => webViewRef.current?.reload()} style={styles.navBtn}>
-          <Ionicons name={loading ? "close-circle-outline" : "refresh-outline"} size={22} color={Colors.light.text} />
+        <TouchableOpacity
+          onPress={() => { if (loading) webViewRef.current?.stopLoading(); else webViewRef.current?.reload(); }}
+          style={styles.navBtn}
+        >
+          <Ionicons
+            name={loading ? "close-circle-outline" : "refresh-outline"}
+            size={20}
+            color={Colors.light.text}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMenuVisible(true); }}
           style={styles.navBtn}
         >
-          <Ionicons name="share-outline" size={22} color={Colors.light.text} />
+          <Ionicons name="ellipsis-vertical" size={20} color={Colors.light.text} />
         </TouchableOpacity>
       </View>
 
       <Modal visible={menuVisible} transparent animationType="slide">
-        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={[styles.menuSheet, { paddingBottom: botPad + 16 }]}>
-            <View style={styles.menuHandle} />
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {[
-                { icon: "share-social-outline", label: "Share", action: handleShare },
-                { icon: "copy-outline", label: "Copy Link", action: handleCopyLink },
-                { icon: "bookmark-outline", label: "Save Page", action: handleSavePage },
-                { icon: desktopMode ? "phone-portrait-outline" : "desktop-outline", label: desktopMode ? "Mobile Site" : "Desktop Site", action: handleDesktopToggle },
-                { icon: "language-outline", label: "Translate Page", action: handleTranslate },
-                { icon: "open-outline", label: "Open in Browser", action: handleOpenInBrowser },
-                { icon: "close-outline", label: "Close", action: () => { setMenuVisible(false); router.back(); } },
-              ].map((item, idx) => (
-                <TouchableOpacity key={idx} style={styles.menuItem} onPress={item.action}>
-                  <Ionicons name={item.icon as any} size={22} color={Colors.light.text} />
-                  <Text style={styles.menuItemText}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <View style={styles.handle} />
+            <View style={styles.menuPageInfo}>
+              <Ionicons name="globe-outline" size={18} color={Colors.light.textSecondary} />
+              <Text style={styles.menuPageTitle} numberOfLines={1}>
+                {pageTitle || getDomain(currentUrl)}
+              </Text>
+            </View>
+            <View style={styles.menuSeparator} />
+            {menuOptions.map((opt, idx) => (
+              <TouchableOpacity key={idx} style={styles.menuItem} onPress={opt.action} activeOpacity={0.7}>
+                <View style={styles.menuIcon}>
+                  <Ionicons name={opt.icon as any} size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.menuLabel}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -258,90 +248,57 @@ export default function BrowserScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-    backgroundColor: Colors.light.backgroundCard,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  titleArea: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-  },
-  titleText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-    color: Colors.light.text,
-    maxWidth: "80%",
-  },
-  progressBarContainer: { height: 2, backgroundColor: Colors.light.filterInactive },
-  progressBar: {
-    height: "100%",
-    backgroundColor: Colors.light.tint,
-    borderRadius: 1,
-  },
+  container: { flex: 1, backgroundColor: "#FFF" },
+  progressTrack: { height: 3, backgroundColor: Colors.light.filterInactive },
+  progressFill: { height: "100%", backgroundColor: Colors.light.tint, borderRadius: 1.5 },
   webview: { flex: 1 },
   webFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    backgroundColor: Colors.light.background,
+    flex: 1, alignItems: "center", justifyContent: "center",
+    gap: 16, backgroundColor: Colors.light.background,
   },
-  webFallbackText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 16,
-    color: Colors.light.textSecondary,
+  webFallbackTitle: {
+    fontFamily: "Inter_500Medium", fontSize: 17, color: Colors.light.text,
   },
-  openInBrowserBtn: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+  openBtn: {
+    backgroundColor: Colors.light.tint, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 28,
   },
-  openInBrowserText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    color: "#FFF",
-  },
+  openBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#FFF" },
+
   bottomBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingTop: 10,
-    backgroundColor: Colors.light.backgroundCard,
+    backgroundColor: "#FFF",
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
-    gap: 4,
+    gap: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  navButtons: { flexDirection: "row", gap: 2 },
   navBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  navBtnDisabled: { opacity: 0.4 },
+  navBtnDim: { opacity: 0.4 },
   urlBar: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    height: 38,
     backgroundColor: Colors.light.filterInactive,
-    borderRadius: 18,
+    borderRadius: 20,
     paddingHorizontal: 12,
-    height: 36,
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
+  urlDisplay: { flexDirection: "row", alignItems: "center" },
   urlText: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
@@ -349,43 +306,63 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   urlInput: {
-    flex: 1,
     fontFamily: "Inter_400Regular",
     fontSize: 13,
     color: Colors.light.text,
     height: "100%",
   },
-  menuOverlay: {
+
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.48)",
     justifyContent: "flex-end",
   },
   menuSheet: {
-    backgroundColor: Colors.light.backgroundCard,
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingHorizontal: 8,
+    paddingTop: 10,
+    paddingHorizontal: 12,
   },
-  menuHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
     backgroundColor: Colors.light.border,
     alignSelf: "center",
-    marginBottom: 8,
+    marginBottom: 14,
   },
+  menuPageInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+  },
+  menuPageTitle: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.light.text,
+    flex: 1,
+  },
+  menuSeparator: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: 8, marginBottom: 8 },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    gap: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 8,
+    borderRadius: 10,
   },
-  menuItemText: {
+  menuIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.light.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuLabel: {
     fontFamily: "Inter_500Medium",
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.light.text,
   },
 });

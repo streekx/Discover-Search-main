@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useSearch } from "@/context/SearchContext";
@@ -72,6 +73,9 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 84 }]} showsVerticalScrollIndicator={false}>
@@ -270,7 +274,21 @@ function SettingRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.light.accentLight,
+  },
   headerTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 28,

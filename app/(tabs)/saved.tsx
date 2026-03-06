@@ -4,7 +4,7 @@ import {
   Image, Platform, Alert
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -76,6 +76,9 @@ export default function SavedScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved</Text>
         <Text style={styles.headerCount}>{savedItems.length} items</Text>
       </View>
@@ -103,16 +106,25 @@ export default function SavedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.light.accentLight,
   },
   headerTitle: {
     fontFamily: "Inter_700Bold",
-    fontSize: 28,
+    fontSize: 26,
     color: Colors.light.text,
+    flex: 1,
   },
   headerCount: {
     fontFamily: "Inter_400Regular",

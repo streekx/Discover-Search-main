@@ -91,6 +91,9 @@ export default function HistoryScreen() {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>History</Text>
         </View>
         <View style={styles.empty}>
@@ -107,6 +110,9 @@ export default function HistoryScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>History</Text>
         {history.length > 0 && (
           <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
@@ -161,16 +167,25 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.light.accentLight,
   },
   headerTitle: {
     fontFamily: "Inter_700Bold",
-    fontSize: 28,
+    fontSize: 26,
     color: Colors.light.text,
+    flex: 1,
   },
   clearBtn: {
     flexDirection: "row",

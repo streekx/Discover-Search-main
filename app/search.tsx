@@ -5,7 +5,7 @@ import {
   Dimensions, Animated, Modal, ScrollView
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -19,29 +19,25 @@ import { useSearch, SearchFilter, SearchResult } from "@/context/SearchContext";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 const { width } = Dimensions.get("window");
+const LOGO_COLORS = ["#1E6FD9","#EF4444","#F59E0B","#1E6FD9","#22C55E","#EF4444","#8B5CF6"];
+const LOGO_LETTERS = ["s","t","r","e","e","k","x"];
 
 const FILTERS: { key: SearchFilter; label: string; icon: string }[] = [
-  { key: "ai", label: "AI Mode", icon: "robot-outline" },
-  { key: "all", label: "All", icon: "earth-outline" },
-  { key: "images", label: "Images", icon: "image-outline" },
-  { key: "videos", label: "Videos", icon: "play-circle-outline" },
-  { key: "news", label: "News", icon: "newspaper-outline" },
+  { key: "ai",       label: "AI Mode",  icon: "robot-outline" },
+  { key: "all",      label: "All",      icon: "earth-outline" },
+  { key: "images",   label: "Images",   icon: "image-outline" },
+  { key: "videos",   label: "Videos",   icon: "play-circle-outline" },
+  { key: "news",     label: "News",     icon: "newspaper-outline" },
   { key: "shopping", label: "Shopping", icon: "cart-outline" },
-  { key: "books", label: "Books", icon: "book-outline" },
-  { key: "maps", label: "Maps", icon: "map-outline" },
+  { key: "books",    label: "Books",    icon: "book-outline" },
+  { key: "maps",     label: "Maps",     icon: "map-outline" },
 ];
 
 function getDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace("www.", "");
-  } catch {
-    return url.slice(0, 30);
-  }
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return url.slice(0, 30); }
 }
-
 function getFavicon(url: string): string {
-  const domain = getDomain(url);
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  return `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`;
 }
 
 export default function SearchScreen() {
@@ -59,84 +55,60 @@ export default function SearchScreen() {
   const [isListening, setIsListening] = useState(false);
   const [voiceModal, setVoiceModal] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [aiExpanded, setAiExpanded] = useState(true);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const micPulse = useRef(new Animated.Value(1)).current;
 
   useSpeechRecognitionEvent("result", (event) => {
-    const transcript = event.results[0]?.transcript || "";
-    setVoiceTranscript(transcript);
-    if (event.isFinal && transcript) {
-      setIsListening(false);
-      setVoiceModal(false);
-      setInputValue(transcript);
-      search(transcript, activeFilter);
+    const t = event.results[0]?.transcript || "";
+    setVoiceTranscript(t);
+    if (event.isFinal && t) {
+      setIsListening(false); setVoiceModal(false);
+      setInputValue(t); search(t, activeFilter);
     }
   });
-
-  useSpeechRecognitionEvent("end", () => {
-    setIsListening(false);
-  });
-
-  useSpeechRecognitionEvent("error", () => {
-    setIsListening(false);
-  });
+  useSpeechRecognitionEvent("end", () => setIsListening(false));
+  useSpeechRecognitionEvent("error", () => setIsListening(false));
 
   useEffect(() => {
     const q = params.q?.trim();
     const f = (params.filter || "all") as SearchFilter;
-    if (q) {
-      search(q, f);
-    }
-    if (params.voiceMode === "1") {
-      setTimeout(() => startVoiceSearch(), 500);
-    }
+    if (q) { setInputValue(q); search(q, f); }
+    if (params.voiceMode === "1") setTimeout(startVoice, 600);
   }, []);
 
-  function startPulseAnim() {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(micPulse, { toValue: 1.3, duration: 600, useNativeDriver: true }),
-        Animated.timing(micPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
+  function pulseMic() {
+    Animated.loop(Animated.sequence([
+      Animated.timing(micPulse, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+      Animated.timing(micPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ])).start();
   }
 
-  async function startVoiceSearch() {
+  async function startVoice() {
     try {
-      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!perm.granted) {
-        return;
-      }
-      setVoiceTranscript("");
-      setVoiceModal(true);
-      setIsListening(true);
-      startPulseAnim();
-      ExpoSpeechRecognitionModule.start({
-        lang: settings.voiceLanguage || "en-IN",
-        interimResults: true,
-        maxAlternatives: 1,
-      });
-    } catch (err) {
-      setIsListening(false);
-      setVoiceModal(true);
-    }
+      const p = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!p.granted) return;
+      setVoiceTranscript(""); setVoiceModal(true); setIsListening(true);
+      pulseMic();
+      ExpoSpeechRecognitionModule.start({ lang: settings.voiceLanguage || "en-IN", interimResults: true, maxAlternatives: 1 });
+    } catch (_) { setIsListening(false); setVoiceModal(true); }
   }
 
-  function stopVoiceSearch() {
+  function stopVoice() {
     ExpoSpeechRecognitionModule.stop();
     micPulse.stopAnimation();
     setIsListening(false);
   }
 
-  function handleSearch() {
-    const q = inputValue.trim();
+  function handleSearch(overrideQuery?: string) {
+    const q = (overrideQuery || inputValue).trim();
     if (!q) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     search(q, activeFilter);
   }
 
-  function handleFilterPress(f: SearchFilter) {
+  function handleFilter(f: SearchFilter) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveFilter(f);
     const q = inputValue.trim();
@@ -146,7 +118,7 @@ export default function SearchScreen() {
   function openLink(url: string) {
     if (!url) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (settings.openLinksInApp) {
+    if (settings.openLinksInApp !== false) {
       router.push({ pathname: "/browser", params: { url } });
     } else {
       Linking.openURL(url);
@@ -155,207 +127,235 @@ export default function SearchScreen() {
 
   function toggleSave(item: SearchResult) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (isSaved(item.url)) {
-      unsaveItem(item.url);
-    } else {
-      saveItem(item);
-    }
+    isSaved(item.url) ? unsaveItem(item.url) : saveItem(item);
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const filterH = 52;
+  const searchBarH = 68;
+  const totalBottom = filterH + searchBarH + botPad;
 
-  function renderAiOverview() {
+  function AiOverviewCard() {
     if (!aiOverview && !aiLoading) return null;
+    const topSources = results.slice(0, 3);
+
     return (
       <View style={styles.aiCard}>
+        <LinearGradient
+          colors={["rgba(162,210,255,0.25)", "rgba(255,255,255,0.0)"]}
+          style={styles.aiCardGradient}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        />
         <View style={styles.aiCardHeader}>
-          <MaterialCommunityIcons name="robot-excited-outline" size={18} color={Colors.light.tint} />
-          <Text style={styles.aiCardTitle}>AI Overview</Text>
-          {aiLoading && <ActivityIndicator size="small" color={Colors.light.tint} style={{ marginLeft: 8 }} />}
-        </View>
-        {aiOverview ? (
-          <Text style={styles.aiCardText}>{aiOverview}</Text>
-        ) : (
-          <View style={styles.aiSkeletonLines}>
-            <View style={[styles.aiSkeleton, { width: "95%" }]} />
-            <View style={[styles.aiSkeleton, { width: "80%" }]} />
-            <View style={[styles.aiSkeleton, { width: "70%" }]} />
+          <View style={styles.aiSparkleWrap}>
+            <MaterialCommunityIcons name="creation" size={18} color={Colors.light.tint} />
           </View>
-        )}
-        {aiOverview && (
-          <TouchableOpacity onPress={() => Speech.speak(aiOverview, { language: "en-IN" })} style={styles.aiSpeakBtn}>
-            <Ionicons name="volume-medium-outline" size={16} color={Colors.light.tint} />
-            <Text style={styles.aiSpeakText}>Listen</Text>
+          <Text style={styles.aiCardTitle}>AI Overview</Text>
+          <TouchableOpacity onPress={() => setAiExpanded(e => !e)} style={styles.aiExpandBtn}>
+            <Ionicons name={aiExpanded ? "chevron-up" : "chevron-down"} size={18} color={Colors.light.textSecondary} />
           </TouchableOpacity>
+        </View>
+
+        {aiExpanded && (
+          <>
+            {aiLoading && !aiOverview ? (
+              <View style={styles.aiSkeletonWrap}>
+                {[95, 80, 65].map((w, i) => (
+                  <View key={i} style={[styles.aiSkeletonLine, { width: `${w}%` }]} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.aiText}>{aiOverview}</Text>
+            )}
+
+            {topSources.length > 0 && (
+              <View style={styles.aiSources}>
+                <Text style={styles.aiSourcesLabel}>Sources</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.aiSourcesScroll}>
+                  {topSources.map((src, idx) => (
+                    <TouchableOpacity key={idx} style={styles.aiSourceChip} onPress={() => openLink(src.url)}>
+                      <Image source={{ uri: getFavicon(src.url) }} style={styles.aiSourceFav} />
+                      <View>
+                        <Text style={styles.aiSourceNum}>{idx + 1}</Text>
+                        <Text style={styles.aiSourceDomain} numberOfLines={1}>{getDomain(src.url)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {aiOverview ? (
+              <TouchableOpacity
+                style={styles.aiListenBtn}
+                onPress={() => Speech.speak(aiOverview, { language: "en-IN", rate: 0.92 })}
+              >
+                <Ionicons name="volume-medium-outline" size={15} color={Colors.light.tint} />
+                <Text style={styles.aiListenText}>Listen to overview</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
         )}
       </View>
     );
   }
 
-  function renderRelated() {
+  function RelatedSearches() {
     if (!relatedSearches.length) return null;
     return (
-      <View style={styles.relatedSection}>
+      <View style={styles.relatedCard}>
         <Text style={styles.relatedTitle}>Related searches</Text>
-        <View style={styles.relatedGrid}>
-          {relatedSearches.map((term, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.relatedChip}
-              onPress={() => { setInputValue(term); search(term, activeFilter); }}
-            >
-              <Ionicons name="search-outline" size={12} color={Colors.light.textSecondary} />
-              <Text style={styles.relatedText}>{term}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {relatedSearches.map((term, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={styles.relatedRow}
+            onPress={() => { setInputValue(term); search(term, activeFilter); }}
+          >
+            <Ionicons name="search-outline" size={16} color={Colors.light.textSecondary} />
+            <Text style={styles.relatedText}>{term}</Text>
+            <Ionicons name="arrow-up-outline" size={14} color={Colors.light.textMuted} style={styles.relatedArrow} />
+          </TouchableOpacity>
+        ))}
       </View>
     );
   }
 
-  function renderImageResult({ item }: { item: SearchResult }) {
-    const imageUri = item.media || item.url;
+  function ImageResult({ item }: { item: SearchResult }) {
+    const src = item.media || item.url;
     return (
-      <TouchableOpacity style={styles.imageCard} onPress={() => openLink(item.url)} activeOpacity={0.85}>
-        <Image source={{ uri: imageUri }} style={styles.imageThumb} resizeMode="cover" />
-        <Text style={styles.imageDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
+      <TouchableOpacity style={styles.imageCard} onPress={() => openLink(item.url)} activeOpacity={0.82}>
+        <Image source={{ uri: src }} style={styles.imageThumb} resizeMode="cover" />
+        <View style={styles.imageFooter}>
+          <Image source={{ uri: getFavicon(item.url) }} style={styles.imageFav} />
+          <Text style={styles.imageDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
+        </View>
       </TouchableOpacity>
     );
   }
 
-  function renderResultCard({ item }: { item: SearchResult }) {
-    if (activeFilter === "images") return renderImageResult({ item });
-
+  function ResultCard({ item }: { item: SearchResult }) {
+    if (activeFilter === "images") return <ImageResult item={item} />;
     const saved = isSaved(item.url);
     return (
-      <TouchableOpacity
-        style={styles.resultCard}
-        onPress={() => openLink(item.url)}
-        activeOpacity={0.85}
-      >
-        <View style={styles.resultHeader}>
-          <Image source={{ uri: getFavicon(item.url) }} style={styles.favicon} />
-          <View style={styles.resultMeta}>
-            <Text style={styles.resultDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
-            {item.source && <Text style={styles.resultSource} numberOfLines={1}>{item.source}</Text>}
+      <TouchableOpacity style={styles.resultCard} onPress={() => openLink(item.url)} activeOpacity={0.85}>
+        <View style={styles.cardMeta}>
+          <View style={styles.cardMetaLeft}>
+            <Image source={{ uri: getFavicon(item.url) }} style={styles.cardFav} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
+              {item.source ? <Text style={styles.cardSource} numberOfLines={1}>{item.source}</Text> : null}
+            </View>
           </View>
-          <TouchableOpacity onPress={() => toggleSave(item)} style={styles.saveBtn}>
-            <Ionicons
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={18}
-              color={saved ? Colors.light.tint : Colors.light.textMuted}
-            />
+          <TouchableOpacity onPress={() => toggleSave(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={19} color={saved ? Colors.light.tint : Colors.light.textMuted} />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
-        {item.description ? (
-          <Text style={styles.resultDesc} numberOfLines={3}>{item.description}</Text>
+        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        {item.description ? <Text style={styles.cardDesc} numberOfLines={3}>{item.description}</Text> : null}
+
+        {item.media ? (
+          <Image source={{ uri: item.media }} style={styles.cardMedia} resizeMode="cover" />
         ) : null}
 
         {activeFilter === "shopping" && item.price ? (
           <View style={styles.priceTag}>
-            <Ionicons name="pricetag-outline" size={13} color={Colors.light.tint} />
             <Text style={styles.priceText}>{item.price}</Text>
           </View>
         ) : null}
+
         {activeFilter === "news" && item.published ? (
           <Text style={styles.publishedText}>{item.published}</Text>
-        ) : null}
-
-        {item.media ? (
-          <Image
-            source={{ uri: item.media }}
-            style={styles.resultMedia}
-            resizeMode="cover"
-          />
         ) : null}
       </TouchableOpacity>
     );
   }
 
-  function renderEmpty() {
+  function ListHeader() {
+    return (
+      <>
+        <AiOverviewCard />
+        <RelatedSearches />
+        {results.length > 0 && (
+          <Text style={styles.resultCount}>About {results.length}+ results</Text>
+        )}
+      </>
+    );
+  }
+
+  function EmptyState() {
     if (isLoading) return null;
     if (error) {
       return (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="cloud-offline-outline" size={48} color={Colors.light.textMuted} />
-          <Text style={styles.emptyTitle}>Something went wrong</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={handleSearch}>
-            <Text style={styles.retryText}>Try Again</Text>
+        <View style={styles.emptyWrap}>
+          <Ionicons name="cloud-offline-outline" size={52} color={Colors.light.textMuted} />
+          <Text style={styles.emptyTitle}>Connection error</Text>
+          <Text style={styles.emptyMsg}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => handleSearch()}>
+            <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
       );
     }
-    if (inputValue && results.length === 0) {
+    if (inputValue && !results.length) {
       return (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="search-outline" size={48} color={Colors.light.textMuted} />
+        <View style={styles.emptyWrap}>
+          <Ionicons name="search-outline" size={52} color={Colors.light.textMuted} />
           <Text style={styles.emptyTitle}>No results found</Text>
-          <Text style={styles.emptyText}>Try different keywords</Text>
+          <Text style={styles.emptyMsg}>Try different keywords or check your connection</Text>
         </View>
       );
     }
     if (!inputValue) {
       return (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="magnify" size={48} color={Colors.light.textMuted} />
-          <Text style={styles.emptyTitle}>Search anything</Text>
-          <Text style={styles.emptyText}>Enter a query to get started</Text>
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyLogoRow}>
+            {LOGO_LETTERS.map((l, i) => (
+              <Text key={i} style={[styles.emptyLogo, { color: LOGO_COLORS[i] }]}>{l}</Text>
+            ))}
+          </View>
+          <Text style={styles.emptyMsg}>Enter a query to search</Text>
         </View>
       );
     }
     return null;
   }
 
-  const numColumns = activeFilter === "images" ? 2 : 1;
-  const filterBarHeight = 56;
-  const searchBarHeight = 72;
-  const bottomBarTotal = filterBarHeight + searchBarHeight + bottomPad;
+  const numCols = activeFilter === "images" ? 2 : 1;
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.light.background }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <View style={{ height: topPad, backgroundColor: Colors.light.backgroundCard }} />
+
+      {isLoading && (
+        <View style={styles.loadStrip}>
+          <LinearGradient
+            colors={[Colors.light.tint, "#A2D2FF", Colors.light.tint]}
+            style={styles.loadStripInner}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          />
+        </View>
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={0}>
-        <View style={[styles.statusPad, { height: topPad }]} />
-
-        {isLoading ? (
-          <View style={styles.loadingBar}>
-            <ActivityIndicator size="small" color={Colors.light.tint} />
-            <Text style={styles.loadingText}>Searching...</Text>
-          </View>
-        ) : null}
-
         <FlatList
           ref={listRef}
           data={results}
           keyExtractor={(item) => item.id}
-          renderItem={renderResultCard}
-          numColumns={numColumns}
-          key={numColumns}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: bottomBarTotal + 16 },
-          ]}
-          ListHeaderComponent={() => (
-            <>
-              {renderAiOverview()}
-              {renderRelated()}
-              {results.length > 0 && (
-                <Text style={styles.resultCount}>{results.length}+ results</Text>
-              )}
-            </>
-          )}
-          ListEmptyComponent={renderEmpty}
+          renderItem={({ item }) => <ResultCard item={item} />}
+          numColumns={numCols}
+          key={numCols}
+          contentContainerStyle={[styles.listPad, { paddingBottom: totalBottom + 20 }]}
+          ListHeaderComponent={<ListHeader />}
+          ListEmptyComponent={<EmptyState />}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
         />
 
-        <View style={[styles.bottomBar, { paddingBottom: bottomPad }]}>
+        <View style={[styles.bottomBar, { paddingBottom: botPad + 4 }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -365,32 +365,33 @@ export default function SearchScreen() {
             {FILTERS.map((f) => (
               <TouchableOpacity
                 key={f.key}
-                style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-                onPress={() => handleFilterPress(f.key)}
+                style={[styles.filterChip, activeFilter === f.key && styles.filterChipOn]}
+                onPress={() => handleFilter(f.key)}
               >
                 <MaterialCommunityIcons
                   name={f.icon as any}
-                  size={14}
+                  size={13}
                   color={activeFilter === f.key ? "#FFF" : Colors.light.textSecondary}
                 />
-                <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
+                <Text style={[styles.filterLabel, activeFilter === f.key && styles.filterLabelOn]}>
                   {f.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View style={styles.searchBar}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <View style={styles.searchRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={20} color={Colors.light.textSecondary} />
             </TouchableOpacity>
+
             <View style={styles.searchInputWrap}>
               <TextInput
                 ref={inputRef}
                 style={styles.searchInput}
                 value={inputValue}
                 onChangeText={setInputValue}
-                onSubmitEditing={handleSearch}
+                onSubmitEditing={() => handleSearch()}
                 placeholder="Search StreekX..."
                 placeholderTextColor={Colors.light.textMuted}
                 returnKeyType="search"
@@ -398,16 +399,17 @@ export default function SearchScreen() {
                 autoCorrect={false}
               />
               {inputValue.length > 0 && (
-                <TouchableOpacity onPress={() => setInputValue("")} style={styles.clearBtn}>
+                <TouchableOpacity onPress={() => setInputValue("")} style={{ padding: 4 }}>
                   <Ionicons name="close-circle" size={16} color={Colors.light.textMuted} />
                 </TouchableOpacity>
               )}
             </View>
+
             <TouchableOpacity style={styles.actionBtn} onPress={() => router.push("/ai-assistant")}>
-              <MaterialCommunityIcons name="robot-outline" size={20} color={Colors.light.tint} />
+              <MaterialCommunityIcons name="robot-excited-outline" size={20} color={Colors.light.tint} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn} onPress={startVoiceSearch}>
-              <Ionicons name={isListening ? "mic" : "mic-outline"} size={20} color={isListening ? "#EF4444" : Colors.light.tint} />
+            <TouchableOpacity style={[styles.actionBtn, isListening && styles.actionBtnLive]} onPress={startVoice}>
+              <Ionicons name={isListening ? "mic" : "mic-outline"} size={20} color={isListening ? "#FFF" : Colors.light.tint} />
             </TouchableOpacity>
           </View>
         </View>
@@ -415,29 +417,31 @@ export default function SearchScreen() {
 
       <Modal visible={voiceModal} transparent animationType="slide">
         <View style={styles.voiceOverlay}>
-          <View style={styles.voiceCard}>
-            <TouchableOpacity onPress={() => { stopVoiceSearch(); setVoiceModal(false); }} style={styles.voiceClose}>
+          <View style={[styles.voiceCard, { paddingBottom: botPad + 32 }]}>
+            <TouchableOpacity onPress={() => { stopVoice(); setVoiceModal(false); }} style={styles.voiceClose}>
               <Ionicons name="close" size={24} color={Colors.light.text} />
             </TouchableOpacity>
-            <Text style={styles.voiceTitle}>
-              {isListening ? "Listening..." : "Voice Search"}
-            </Text>
+            <Text style={styles.voiceTitle}>{isListening ? "Listening..." : "Voice Search"}</Text>
             <Animated.View style={[styles.micCircle, { transform: [{ scale: micPulse }] }]}>
-              <Ionicons name="mic" size={40} color="#FFF" />
+              <LinearGradient colors={[Colors.light.tint, "#0EA5E9"]} style={styles.micCircleInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <Ionicons name="mic" size={42} color="#FFF" />
+              </LinearGradient>
             </Animated.View>
             {voiceTranscript ? (
               <Text style={styles.voiceTranscript}>"{voiceTranscript}"</Text>
             ) : (
-              <Text style={styles.voiceHint}>Speak now to search</Text>
+              <Text style={styles.voiceHint}>
+                {isListening ? "Speak now..." : "Tap to start speaking"}
+              </Text>
             )}
-            {!isListening && (
-              <TouchableOpacity style={styles.voiceStartBtn} onPress={startVoiceSearch}>
-                <Text style={styles.voiceStartText}>Tap to speak</Text>
-              </TouchableOpacity>
-            )}
-            {isListening && (
-              <TouchableOpacity style={styles.voiceStopBtn} onPress={stopVoiceSearch}>
+            {isListening ? (
+              <TouchableOpacity style={styles.voiceStopBtn} onPress={stopVoice}>
                 <Text style={styles.voiceStopText}>Stop</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.voiceStartBtn} onPress={startVoice}>
+                <Ionicons name="mic" size={18} color="#FFF" />
+                <Text style={styles.voiceStartText}>Tap to speak</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -448,101 +452,147 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  statusPad: { backgroundColor: Colors.light.background },
-  loadingBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 6,
-    backgroundColor: Colors.light.accentLight,
-  },
-  loadingText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.light.tint,
-  },
-  listContent: { paddingHorizontal: 12, paddingTop: 8 },
+  container: { flex: 1, backgroundColor: Colors.light.background },
+  loadStrip: { height: 3, backgroundColor: Colors.light.filterInactive, overflow: "hidden" },
+  loadStripInner: { flex: 1 },
+  listPad: { paddingHorizontal: 12, paddingTop: 10 },
+
   aiCard: {
-    backgroundColor: Colors.light.backgroundCard,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: Colors.light.accent,
+    borderColor: "rgba(162,210,255,0.6)",
+    backgroundColor: "#FAFEFF",
+    padding: 16,
+    marginBottom: 14,
+    overflow: "hidden",
     shadowColor: Colors.light.tint,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
   },
+  aiCardGradient: { ...StyleSheet.absoluteFillObject },
   aiCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  aiSparkleWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(162,210,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   aiCardTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.light.tint,
-  },
-  aiCardText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
     color: Colors.light.text,
-    lineHeight: 22,
+    flex: 1,
   },
-  aiSkeletonLines: { gap: 8 },
-  aiSkeleton: {
+  aiExpandBtn: { padding: 4 },
+  aiSkeletonWrap: { gap: 8, marginBottom: 14 },
+  aiSkeletonLine: {
     height: 14,
-    backgroundColor: Colors.light.accentLight,
+    backgroundColor: "rgba(162,210,255,0.3)",
     borderRadius: 4,
   },
-  aiSpeakBtn: {
+  aiText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14.5,
+    color: Colors.light.text,
+    lineHeight: 23,
+    marginBottom: 14,
+  },
+  aiSources: { marginBottom: 10 },
+  aiSourcesLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  aiSourcesScroll: {},
+  aiSourceChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 10,
-    alignSelf: "flex-start",
+    gap: 8,
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 10,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    minWidth: 120,
+    maxWidth: 160,
   },
-  aiSpeakText: {
+  aiSourceFav: { width: 20, height: 20, borderRadius: 4 },
+  aiSourceNum: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    color: Colors.light.tint,
+  },
+  aiSourceDomain: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  aiListenBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  aiListenText: {
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     color: Colors.light.tint,
   },
-  relatedSection: { marginBottom: 12 },
+
+  relatedCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    marginBottom: 14,
+  },
   relatedTitle: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     color: Colors.light.text,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  relatedGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  relatedChip: {
+  relatedRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    backgroundColor: Colors.light.filterInactive,
-    borderRadius: 16,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    gap: 10,
   },
   relatedText: {
     fontFamily: "Inter_400Regular",
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.light.text,
+    flex: 1,
   },
+  relatedArrow: { transform: [{ rotate: "45deg" }] },
+
   resultCount: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: Colors.light.textMuted,
-    marginBottom: 10,
-    marginLeft: 4,
+    marginBottom: 8,
+    marginLeft: 2,
   },
+
   resultCard: {
-    backgroundColor: Colors.light.backgroundCard,
+    backgroundColor: "#FFF",
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -554,53 +604,55 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  resultHeader: {
+  cardMeta: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
-    gap: 8,
+    justifyContent: "space-between",
   },
-  favicon: { width: 18, height: 18, borderRadius: 4 },
-  resultMeta: { flex: 1 },
-  resultDomain: {
+  cardMetaLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  cardFav: { width: 20, height: 20, borderRadius: 4 },
+  cardDomain: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: Colors.light.textSecondary,
   },
-  resultSource: {
+  cardSource: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     color: Colors.light.textMuted,
   },
-  saveBtn: { padding: 4 },
-  resultTitle: {
+  cardTitle: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
-    color: Colors.light.tint,
+    color: "#1A73E8",
     lineHeight: 22,
     marginBottom: 6,
   },
-  resultDesc: {
+  cardDesc: {
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontSize: 13.5,
     color: Colors.light.textSecondary,
     lineHeight: 20,
   },
-  resultMedia: {
+  cardMedia: {
     width: "100%",
     height: 160,
     borderRadius: 10,
     marginTop: 10,
   },
   priceTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
     marginTop: 8,
     backgroundColor: "#ECFDF5",
     borderRadius: 8,
     paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     alignSelf: "flex-start",
   },
   priceText: {
@@ -614,67 +666,83 @@ const styles = StyleSheet.create({
     color: Colors.light.textMuted,
     marginTop: 6,
   },
+
   imageCard: {
     flex: 1,
     margin: 4,
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: Colors.light.filterInactive,
-    maxWidth: (width - 32) / 2,
+    maxWidth: (width - 28) / 2,
   },
   imageThumb: { width: "100%", aspectRatio: 1 },
+  imageFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    padding: 7,
+  },
+  imageFav: { width: 14, height: 14, borderRadius: 3 },
   imageDomain: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     color: Colors.light.textSecondary,
-    padding: 6,
-  },
-  emptyContainer: {
     flex: 1,
+  },
+
+  emptyWrap: {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 80,
-    gap: 12,
+    gap: 16,
+    paddingHorizontal: 40,
+  },
+  emptyLogoRow: { flexDirection: "row" },
+  emptyLogo: {
+    fontFamily: "Caveat_700Bold",
+    fontSize: 42,
+    letterSpacing: 2,
   },
   emptyTitle: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 18,
     color: Colors.light.text,
   },
-  emptyText: {
+  emptyMsg: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
     color: Colors.light.textSecondary,
     textAlign: "center",
-    paddingHorizontal: 40,
+    lineHeight: 20,
   },
   retryBtn: {
     backgroundColor: Colors.light.tint,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 12,
-    paddingHorizontal: 28,
-    marginTop: 8,
+    paddingHorizontal: 32,
+    marginTop: 4,
   },
   retryText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#FFF",
   },
+
   bottomBar: {
-    backgroundColor: Colors.light.backgroundCard,
+    backgroundColor: "#FFF",
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.07,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 10,
   },
-  filterBar: { maxHeight: 56 },
+  filterBar: { maxHeight: 52 },
   filterScroll: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    gap: 7,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -689,22 +757,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  filterChipActive: {
+  filterChipOn: {
     backgroundColor: Colors.light.tint,
     borderColor: Colors.light.tint,
   },
-  filterText: {
+  filterLabel: {
     fontFamily: "Inter_500Medium",
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.textSecondary,
   },
-  filterTextActive: { color: "#FFF" },
-  searchBar: {
+  filterLabelOn: { color: "#FFF" },
+
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 7,
   },
   backBtn: {
     width: 36,
@@ -719,60 +789,65 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.light.filterInactive,
-    borderRadius: 22,
+    borderRadius: 24,
     paddingHorizontal: 14,
     height: 42,
     borderWidth: 1,
     borderColor: Colors.light.border,
+    gap: 4,
   },
   searchInput: {
     flex: 1,
     fontFamily: "Inter_400Regular",
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.light.text,
     height: "100%",
   },
-  clearBtn: { padding: 2 },
   actionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.light.accentLight,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(162,210,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
   },
+  actionBtnLive: {
+    backgroundColor: "#EF4444",
+    borderColor: "#EF4444",
+  },
+
   voiceOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   voiceCard: {
-    backgroundColor: Colors.light.backgroundCard,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 32,
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 16,
+    paddingHorizontal: 32,
     alignItems: "center",
     gap: 20,
   },
-  voiceClose: { position: "absolute", right: 20, top: 20 },
+  voiceClose: { position: "absolute", right: 20, top: 16 },
   voiceTitle: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 18,
     color: Colors.light.text,
-    marginTop: 16,
+    marginTop: 20,
   },
-  micCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: Colors.light.tint,
+  micCircle: { width: 100, height: 100, borderRadius: 50, overflow: "hidden" },
+  micCircleInner: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: Colors.light.tint,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 16,
   },
   voiceTranscript: {
     fontFamily: "Inter_400Regular",
@@ -783,13 +858,16 @@ const styles = StyleSheet.create({
   },
   voiceHint: {
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.light.textSecondary,
   },
   voiceStartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     backgroundColor: Colors.light.tint,
-    borderRadius: 24,
-    paddingVertical: 12,
+    borderRadius: 26,
+    paddingVertical: 13,
     paddingHorizontal: 32,
   },
   voiceStartText: {
@@ -799,9 +877,9 @@ const styles = StyleSheet.create({
   },
   voiceStopBtn: {
     backgroundColor: "#FEE2E2",
-    borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    borderRadius: 26,
+    paddingVertical: 13,
+    paddingHorizontal: 40,
   },
   voiceStopText: {
     fontFamily: "Inter_600SemiBold",
