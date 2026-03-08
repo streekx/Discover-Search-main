@@ -1,0 +1,19 @@
+But home screen par jo left corner mein discover ka icon hai wo waisa nahi hona chahiye  , balki wo waisa hona chahiye jaisa maine perplexity ka screen shot diya hai jisme discovery ka icon hai jisme 2 squares hai and oos 2 squares mein latest posts and data dikh rha hai waisa hi hamare search engine ke left corner mein discover ka icon hona chahiye. 
+
+
+jaise pehle  search bar ke niche recents and uske Niche box mein Trending tha waisa hi karo similarly yahoo. 
+
+
+And jo search bar mein ai assistant hai uska screen bhi maine screenshot mein dikha diya hai ki ai assistant ka screen kaise dikhta hai similarly perplexity ai assistant. And ai assistant full working hona chahiye similarly perplexity. Jab user ai assistant ke icon par click kare to chat interface nahi open hona chahiye kyuki wo ai assistant hai chat bot nahi. And ai assistant ke icon pad voice wave moving hona chahiye similarly perplexity.
+
+And streekx ai search engine chat ai mode par click karne ke baad hona chahiye . Jab user kuchh search karke ai mode par jata hai tab Streekx ai search engine chat aana chahiye and fully working hona chahiye similarly perplexity and history mein search ka alag and thread ka alag save hona chahiye similarly perplexity. Kyuki search wo hai jo search engine par user dwara search kiya gya hai but thread wo hai jo ai Mode par thread banaya gya hai similarly perplexity.
+
+Abhi jo history ka ui hai wahi rehna chahiye bas history ke screen par sabse niche do switch karne wale hone chahiye ( Search and thread) jaise perplexity mein thread and space ka switch karne wala hota hai waise hi is history screen ke sabse niche search and thread ka history ka switch karne ka hoga
+
+And google ki tarah search karne ke baad ye kuchh new features bhi sahi kardo 
+
+AI OverviewSabse upar AI Overview dikhta hai, jo AI-generated summary hota hai jo kai sources se jaankari ikattha karta hai. Yeh prominent position mein hota hai, saath hi link cards ke saath jo original sources par le jaate hain. Complex queries ke liye yeh multistep reasoning use karta hai. 
+
+Celebrity Card (Knowledge Panel)Celebrity ya famous person search karne par knowledge panel ya people card dikhta hai, jo right side (desktop) ya top (mobile) mein hota hai. Isme photo, bio, social links, works aur related info hoti hai, jo Google's Knowledge Graph se aati hai. Yeh established personalities ke liye hota hai.
+
+But all ke and news button se question mark ( ? ) remove karo search results screen par . And wo sab buttons all, images, videos, news, shopping, and all sab real time working hona chahiye without any error or problem. Sab real working hona chahiye matlab agar user video par click kare to crawled data ka videos show hona chahiye similarly google. And agar shopping par click kare to only shopping ke . Ye flow google and yahoo ki tarah real time working hona chahiye.
