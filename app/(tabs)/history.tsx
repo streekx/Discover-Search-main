@@ -24,7 +24,9 @@ const FILTER_LABELS: Record<SearchFilter, string> = {
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { history, clearHistory, removeHistoryItem, search, settings } = useSearch();
+  const [activeTab, setActiveTab] = useState<"search" | "threads">("search");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   function handleSearch(item: HistoryItem) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -114,7 +116,7 @@ export default function HistoryScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>History</Text>
-        {history.length > 0 && (
+        {history.length > 0 && activeTab === "search" && (
           <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
             <Ionicons name="trash-outline" size={20} color={Colors.light.danger} />
             <Text style={styles.clearText}>Clear</Text>
@@ -122,44 +124,69 @@ export default function HistoryScreen() {
         )}
       </View>
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item, idx) => `${item.query}-${idx}`}
-        renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-          </View>
-        )}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.historyItem}
-            onPress={() => handleSearch(item)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="search-outline" size={18} color={Colors.light.textSecondary} />
-            <View style={styles.historyContent}>
-              <Text style={styles.historyQuery} numberOfLines={1}>{item.query}</Text>
-              <View style={styles.historyMeta}>
-                <Text style={styles.historyFilter}>{FILTER_LABELS[item.filter] || "All"}</Text>
-                <Text style={styles.historyTime}>{formatTime(item.timestamp)}</Text>
-              </View>
+      {activeTab === "search" ? (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item, idx) => `${item.query}-${idx}`}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleRemove(item.query)} style={styles.deleteBtn}>
-              <Ionicons name="close-outline" size={18} color={Colors.light.textMuted} />
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.historyItem}
+              onPress={() => handleSearch(item)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="search-outline" size={18} color={Colors.light.textSecondary} />
+              <View style={styles.historyContent}>
+                <Text style={styles.historyQuery} numberOfLines={1}>{item.query}</Text>
+                <View style={styles.historyMeta}>
+                  <Text style={styles.historyFilter}>{FILTER_LABELS[item.filter] || "All"}</Text>
+                  <Text style={styles.historyTime}>{formatTime(item.timestamp)}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => handleRemove(item.query)} style={styles.deleteBtn}>
+                <Ionicons name="close-outline" size={18} color={Colors.light.textMuted} />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="time-outline" size={56} color={Colors.light.textMuted} />
-            <Text style={styles.emptyTitle}>No history yet</Text>
-            <Text style={styles.emptyText}>Your searches will appear here</Text>
-          </View>
-        }
-        stickySectionHeadersEnabled
-      />
+          )}
+          contentContainerStyle={[styles.listContent, { paddingBottom: botPad + 80 }]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="time-outline" size={56} color={Colors.light.textMuted} />
+              <Text style={styles.emptyTitle}>No search history</Text>
+              <Text style={styles.emptyText}>Your searches will appear here</Text>
+            </View>
+          }
+          stickySectionHeadersEnabled
+        />
+      ) : (
+        <View style={[styles.empty, { paddingBottom: botPad + 80 }]}>
+          <Ionicons name="chatbubbles-outline" size={56} color={Colors.light.textMuted} />
+          <Text style={styles.emptyTitle}>No threads yet</Text>
+          <Text style={styles.emptyText}>Your AI Mode conversations will appear here</Text>
+        </View>
+      )}
+
+      <View style={[styles.tabBar, { paddingBottom: botPad + 8 }]}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "search" && styles.tabActive]}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab("search"); }}
+        >
+          <Ionicons name="search-outline" size={20} color={activeTab === "search" ? Colors.light.tint : Colors.light.textSecondary} />
+          <Text style={[styles.tabText, activeTab === "search" && styles.tabTextActive]}>Search</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "threads" && styles.tabActive]}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab("threads"); }}
+        >
+          <Ionicons name="chatbubbles-outline" size={20} color={activeTab === "threads" ? Colors.light.tint : Colors.light.textSecondary} />
+          <Text style={[styles.tabText, activeTab === "threads" && styles.tabTextActive]}>Threads</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -213,7 +240,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  listContent: { paddingBottom: 100 },
+  listContent: {},
   historyItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -269,5 +296,43 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     textAlign: "center",
     lineHeight: 20,
+  },
+  tabBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  tabActive: {
+    backgroundColor: Colors.light.accentLight,
+  },
+  tabText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+  },
+  tabTextActive: {
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.tint,
   },
 });

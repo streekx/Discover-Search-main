@@ -60,9 +60,8 @@ export default function HomeScreen() {
   const navItems = [
     { label: "History", icon: "time-outline", path: "/(tabs)/history" },
     { label: "Saved", icon: "bookmark-outline", path: "/(tabs)/saved" },
-    { label: "Settings", icon: "settings-outline", path: "/(tabs)/settings" },
-    { label: "AI Assistant", icon: "sparkles-outline", path: "/ai-assistant" },
     { label: "Discover", icon: "compass-outline", path: "/discover" },
+    { label: "Settings", icon: "settings-outline", path: "/(tabs)/settings" },
   ];
 
   return (
@@ -80,18 +79,16 @@ export default function HomeScreen() {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/discover"); }}
           activeOpacity={0.85}
         >
-          <LinearGradient
-            colors={["#1E6FD9", "#0EA5E9"]}
-            style={styles.discoverGrad}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.discoverSquares}>
-              <View style={[styles.discoverSq, { backgroundColor: "rgba(255,255,255,0.9)" }]} />
-              <View style={[styles.discoverSq, { backgroundColor: "rgba(255,255,255,0.5)" }]} />
-              <View style={[styles.discoverSq, { backgroundColor: "rgba(255,255,255,0.5)" }]} />
-              <View style={[styles.discoverSq, { backgroundColor: "rgba(255,255,255,0.9)" }]} />
+          <View style={styles.discoverContent}>
+            <View style={styles.discoverTop}>
+              <View style={styles.discoverLine1} />
+              <View style={styles.discoverLine2} />
             </View>
-          </LinearGradient>
+            <View style={styles.discoverBottom}>
+              <View style={styles.discoverLine3} />
+              <View style={styles.discoverLine4} />
+            </View>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -120,34 +117,19 @@ export default function HomeScreen() {
 
       <TouchableOpacity style={styles.searchBar} onPress={handleSearchBarTap} activeOpacity={0.9}>
         <Ionicons name="search-outline" size={20} color={Colors.light.textSecondary} style={{ marginRight: 8 }} />
-        <Text style={styles.searchPlaceholder}>Find anything...</Text>
+        <Text style={styles.searchPlaceholder}>Ask anything...</Text>
         <View style={styles.searchRight}>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleAi} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialCommunityIcons name="robot-excited-outline" size={21} color={Colors.light.tint} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleVoice} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="mic-outline" size={21} color={Colors.light.tint} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
 
-      <View style={styles.trendingSection}>
-        <Text style={styles.trendingLabel}>Trending</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.trendingRow}>
-          {TRENDING.map((term, idx) => (
-            <TouchableOpacity key={idx} style={styles.trendChip} onPress={() => handleTrending(term)} activeOpacity={0.7}>
-              <Ionicons name="trending-up-outline" size={13} color={Colors.light.tint} />
-              <Text style={styles.trendText}>{term}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
       {history.length > 0 && (
         <View style={styles.recentSection}>
-          <Text style={styles.recentLabel}>Recent searches</Text>
+          <Text style={styles.recentLabel}>Recent</Text>
           <View style={styles.recentRow}>
-            {history.slice(0, 5).map((item, idx) => (
+            {history.slice(0, 6).map((item, idx) => (
               <TouchableOpacity key={idx} style={styles.recentChip} onPress={() => {
                 search(item.query, "all");
                 router.push({ pathname: "/search", params: { q: item.query, filter: "all" } });
@@ -159,6 +141,20 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
+
+      <View style={styles.trendingSection}>
+        <Text style={styles.trendingLabel}>Trending</Text>
+        <View style={styles.trendingGrid}>
+          {TRENDING.slice(0, 6).map((term, idx) => (
+            <TouchableOpacity key={idx} style={styles.trendBox} onPress={() => handleTrending(term)} activeOpacity={0.85}>
+              <View style={styles.trendIconWrap}>
+                <Ionicons name="trending-up" size={16} color={Colors.light.tint} />
+              </View>
+              <Text style={styles.trendBoxText} numberOfLines={2}>{term}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       <Modal visible={menuVisible} transparent animationType="slide">
         <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
@@ -206,25 +202,55 @@ const styles = StyleSheet.create({
     marginBottom: 36,
     marginTop: 12,
   },
-  discoverBtn: { borderRadius: 14, overflow: "hidden" },
-  discoverGrad: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+  discoverBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: Colors.light.border,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  discoverSquares: {
+  discoverContent: {
+    width: 32,
+    height: 32,
+    gap: 4,
+  },
+  discoverTop: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    width: 22,
-    height: 22,
-    gap: 3,
+    gap: 4,
+    flex: 1,
   },
-  discoverSq: {
-    width: 9,
-    height: 9,
-    borderRadius: 2,
+  discoverBottom: {
+    flexDirection: "row",
+    gap: 4,
+    flex: 1,
+  },
+  discoverLine1: {
+    flex: 1,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 3,
+  },
+  discoverLine2: {
+    width: 8,
+    backgroundColor: "rgba(30,111,217,0.3)",
+    borderRadius: 3,
+  },
+  discoverLine3: {
+    width: 8,
+    backgroundColor: "rgba(30,111,217,0.3)",
+    borderRadius: 3,
+  },
+  discoverLine4: {
+    flex: 1,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 3,
   },
   menuBtn: {
     width: 42,
@@ -287,34 +313,43 @@ const styles = StyleSheet.create({
   trendingSection: { marginBottom: 20 },
   trendingLabel: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    marginBottom: 10,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
+    fontSize: 15,
+    color: Colors.light.text,
+    marginBottom: 12,
   },
-  trendingRow: { flexDirection: "row" },
-  trendChip: {
+  trendingGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  trendBox: {
+    width: (width - 60) / 2,
     backgroundColor: "#FFF",
-    borderRadius: 24,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginRight: 8,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: Colors.light.border,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    minHeight: 88,
   },
-  trendText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
+  trendIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: Colors.light.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  trendBoxText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
     color: Colors.light.text,
+    lineHeight: 20,
   },
 
   recentSection: { marginBottom: 16 },
