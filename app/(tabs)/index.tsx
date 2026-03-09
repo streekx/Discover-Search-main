@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useSearch } from "@/context/SearchContext";
+import DynamicDiscoverTile from "@/components/DynamicDiscoverTile";
 
 const { width, height } = Dimensions.get("window");
 
@@ -74,22 +75,7 @@ export default function HomeScreen() {
       />
 
       <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.discoverBtn}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/discover"); }}
-          activeOpacity={0.85}
-        >
-          <View style={styles.discoverContent}>
-            <View style={styles.discoverTop}>
-              <View style={styles.discoverLine1} />
-              <View style={styles.discoverLine2} />
-            </View>
-            <View style={styles.discoverBottom}>
-              <View style={styles.discoverLine3} />
-              <View style={styles.discoverLine4} />
-            </View>
-          </View>
-        </TouchableOpacity>
+        <DynamicDiscoverTile />
 
         <TouchableOpacity
           style={styles.menuBtn}
@@ -201,56 +187,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 36,
     marginTop: 12,
-  },
-  discoverBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  discoverContent: {
-    width: 32,
-    height: 32,
-    gap: 4,
-  },
-  discoverTop: {
-    flexDirection: "row",
-    gap: 4,
-    flex: 1,
-  },
-  discoverBottom: {
-    flexDirection: "row",
-    gap: 4,
-    flex: 1,
-  },
-  discoverLine1: {
-    flex: 1,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 3,
-  },
-  discoverLine2: {
-    width: 8,
-    backgroundColor: "rgba(30,111,217,0.3)",
-    borderRadius: 3,
-  },
-  discoverLine3: {
-    width: 8,
-    backgroundColor: "rgba(30,111,217,0.3)",
-    borderRadius: 3,
-  },
-  discoverLine4: {
-    flex: 1,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 3,
   },
   menuBtn: {
     width: 42,
