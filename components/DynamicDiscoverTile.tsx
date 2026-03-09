@@ -111,14 +111,22 @@ export default function DynamicDiscoverTile() {
     );
   }
 
+  const backItem = items[(currentIndex + 1) % items.length];
+
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={handleTileTap}
       activeOpacity={0.85}
     >
-      {/* Back angled layered square */}
-      <View style={[styles.layeredSquare, styles.backLayer]} />
+      {/* Back angled layered square with different image */}
+      <View style={[styles.layeredSquare, styles.backLayer]}>
+        <Image
+          source={{ uri: backItem.image }}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
+      </View>
 
       {/* Front main tile with image */}
       <View style={[styles.layeredSquare, styles.frontLayer]}>
