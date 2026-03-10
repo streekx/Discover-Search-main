@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE_URL = "https://streekxkk-streekx.hf.space";
+const BASE_URL = process.env.EXPO_PUBLIC_CRAWLER_URL || "https://streekxkk-streekx.hf.space";
 
 export interface SearchResult {
   id: string;

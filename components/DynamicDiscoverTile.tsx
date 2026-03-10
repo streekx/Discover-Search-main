@@ -67,7 +67,7 @@ export default function DynamicDiscoverTile() {
 
   async function fetchTrendingItems() {
     try {
-      const BASE_URL = "https://streekxkk-streekx.hf.space";
+      const BASE_URL = process.env.EXPO_PUBLIC_CRAWLER_URL || "https://streekxkk-streekx.hf.space";
       const res = await fetch(`${BASE_URL}/search?q=trending+today&filter=news`, {
         signal: AbortSignal.timeout(8000),
       });
