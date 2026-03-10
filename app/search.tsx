@@ -18,6 +18,18 @@ import Colors from "@/constants/colors";
 import { useSearch, SearchFilter, SearchResult } from "@/context/SearchContext";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
+const PLACEHOLDER_IMAGE = require("@/assets/images/icon.png");
+
+const isValidImageUrl = (url: string | null | undefined): boolean => {
+  if (!url || typeof url !== "string") return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const { width } = Dimensions.get("window");
 const LOGO_COLORS = ["#1E6FD9","#EF4444","#F59E0B","#1E6FD9","#22C55E","#EF4444","#8B5CF6"];
 const LOGO_LETTERS = ["s","t","r","e","e","k","x"];
@@ -179,15 +191,18 @@ export default function SearchScreen() {
               <View style={styles.aiSources}>
                 <Text style={styles.aiSourcesLabel}>Sources</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.aiSourcesScroll}>
-                  {topSources.map((src, idx) => (
-                    <TouchableOpacity key={idx} style={styles.aiSourceChip} onPress={() => openLink(src.url)}>
-                      <Image source={{ uri: getFavicon(src.url) }} style={styles.aiSourceFav} />
-                      <View>
-                        <Text style={styles.aiSourceNum}>{idx + 1}</Text>
-                        <Text style={styles.aiSourceDomain} numberOfLines={1}>{getDomain(src.url)}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                  {topSources.map((src, idx) => {
+                    const faviconSrc = isValidImageUrl(getFavicon(src.url)) ? { uri: getFavicon(src.url) } : PLACEHOLDER_IMAGE;
+                    return (
+                      <TouchableOpacity key={idx} style={styles.aiSourceChip} onPress={() => openLink(src.url)}>
+                        <Image source={faviconSrc} style={styles.aiSourceFav} onError={() => null} />
+                        <View>
+                          <Text style={styles.aiSourceNum}>{idx + 1}</Text>
+                          <Text style={styles.aiSourceDomain} numberOfLines={1}>{getDomain(src.url)}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
             )}
@@ -229,11 +244,14 @@ export default function SearchScreen() {
 
   function ImageResult({ item }: { item: SearchResult }) {
     const src = item.media || item.url;
+    const imageSource = isValidImageUrl(src) ? { uri: src } : PLACEHOLDER_IMAGE;
+    const faviconSource = isValidImageUrl(getFavicon(item.url)) ? { uri: getFavicon(item.url) } : PLACEHOLDER_IMAGE;
+    
     return (
       <TouchableOpacity style={styles.imageCard} onPress={() => openLink(item.url)} activeOpacity={0.82}>
-        <Image source={{ uri: src }} style={styles.imageThumb} resizeMode="cover" />
+        <Image source={imageSource} style={styles.imageThumb} resizeMode="cover" onError={() => null} />
         <View style={styles.imageFooter}>
-          <Image source={{ uri: getFavicon(item.url) }} style={styles.imageFav} />
+          <Image source={faviconSource} style={styles.imageFav} onError={() => null} />
           <Text style={styles.imageDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
         </View>
       </TouchableOpacity>
@@ -243,11 +261,14 @@ export default function SearchScreen() {
   function ResultCard({ item }: { item: SearchResult }) {
     if (activeFilter === "images") return <ImageResult item={item} />;
     const saved = isSaved(item.url);
+    const faviconSource = isValidImageUrl(getFavicon(item.url)) ? { uri: getFavicon(item.url) } : PLACEHOLDER_IMAGE;
+    const mediaSource = isValidImageUrl(item.media) ? { uri: item.media } : PLACEHOLDER_IMAGE;
+    
     return (
       <TouchableOpacity style={styles.resultCard} onPress={() => openLink(item.url)} activeOpacity={0.85}>
         <View style={styles.cardMeta}>
           <View style={styles.cardMetaLeft}>
-            <Image source={{ uri: getFavicon(item.url) }} style={styles.cardFav} />
+            <Image source={faviconSource} style={styles.cardFav} onError={() => null} />
             <View style={{ flex: 1 }}>
               <Text style={styles.cardDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
               {item.source ? <Text style={styles.cardSource} numberOfLines={1}>{item.source}</Text> : null}
@@ -261,8 +282,8 @@ export default function SearchScreen() {
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
         {item.description ? <Text style={styles.cardDesc} numberOfLines={3}>{item.description}</Text> : null}
 
-        {item.media ? (
-          <Image source={{ uri: item.media }} style={styles.cardMedia} resizeMode="cover" />
+        {item.media && isValidImageUrl(item.media) ? (
+          <Image source={mediaSource} style={styles.cardMedia} resizeMode="cover" onError={() => null} />
         ) : null}
 
         {activeFilter === "shopping" && item.price ? (

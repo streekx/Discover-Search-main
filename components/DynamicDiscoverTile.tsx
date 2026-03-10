@@ -7,6 +7,18 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 
+const PLACEHOLDER_IMAGE = require("@/assets/images/icon.png");
+
+const isValidImageUrl = (url: string | null | undefined): boolean => {
+  if (!url || typeof url !== "string") return false;
+  try {
+    new URL(url);
+    return url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/i) !== null || url.includes("http");
+  } catch {
+    return false;
+  }
+};
+
 interface DiscoverItem {
   id: string;
   image: string;
@@ -112,6 +124,14 @@ export default function DynamicDiscoverTile() {
 
   const backItem = items[(currentIndex + 1) % items.length];
 
+  const backImageSource = isValidImageUrl(backItem.image)
+    ? { uri: backItem.image }
+    : PLACEHOLDER_IMAGE;
+  
+  const frontImageSource = isValidImageUrl(currentItem.image)
+    ? { uri: currentItem.image }
+    : PLACEHOLDER_IMAGE;
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -121,18 +141,20 @@ export default function DynamicDiscoverTile() {
       {/* Back angled layered square with different image */}
       <View style={[styles.layeredSquare, styles.backLayer]}>
         <Image
-          source={{ uri: backItem.image }}
+          source={backImageSource}
           style={styles.backgroundImage}
           resizeMode="cover"
+          onError={() => setHasImage(false)}
         />
       </View>
 
       {/* Front main tile with image */}
       <View style={[styles.layeredSquare, styles.frontLayer]}>
         <Image
-          source={{ uri: currentItem.image }}
+          source={frontImageSource}
           style={styles.backgroundImage}
           resizeMode="cover"
+          onError={() => setHasImage(false)}
         />
 
         {/* Subtle gradient overlay */}
