@@ -105,6 +105,7 @@ export default function SearchScreen() {
     const q = (overrideQuery || inputValue).trim();
     if (!q) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // The search function from SearchContext already uses the new Render URL
     search(q, activeFilter);
   }
 
