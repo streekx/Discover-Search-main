@@ -31,21 +31,27 @@ const isValidImageUrl = (url: string | null | undefined): boolean => {
 };
 
 const { width } = Dimensions.get("window");
-const LOGO_COLORS = ["#1E6FD9","#EF4444","#F59E0B","#1E6FD9","#22C55E","#EF4444","#8B5CF6"];
-const LOGO_LETTERS = ["s","t","r","e","e","k","x"];
 
 const FILTERS: { key: SearchFilter; label: string }[] = [
-  { key: "all",      label: "All" },
+  { key: "all",      label: "Web" },
   { key: "images",   label: "Images" },
-  { key: "videos",   label: "Videos" },
   { key: "news",     label: "News" },
-  { key: "shopping", label: "Shopping" },
+  { key: "videos",   label: "Videos" },
   { key: "maps",     label: "Maps" },
-  { key: "books",    label: "Books" },
+  { key: "shopping", label: "Shopping" },
+  { key: "books",    label: "More" },
 ];
 
 function getDomain(url: string): string {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url.slice(0, 30); }
+}
+function getUrlBreadcrumb(url: string): string {
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length === 0) return u.hostname.replace("www.", "");
+    return u.hostname.replace("www.", "") + " › " + parts.slice(0, 2).join(" › ");
+  } catch { return url.slice(0, 40); }
 }
 function getFavicon(url: string): string {
   return `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`;
@@ -117,7 +123,6 @@ export default function SearchScreen() {
     const q = (overrideQuery || inputValue).trim();
     if (!q) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // The search function from SearchContext already uses the new Render URL
     search(q, activeFilter);
   }
 
@@ -150,74 +155,90 @@ export default function SearchScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const filterH = 52;
-  const searchBarH = 68;
-  const totalBottom = filterH + searchBarH + botPad;
 
-  function AiOverviewCard() {
+  function KnowledgeCard() {
     if (!aiOverview && !aiLoading) return null;
-    const topSources = results.slice(0, 3);
+    const topSrc = results[0];
 
     return (
-      <View style={styles.aiCard}>
-        <LinearGradient
-          colors={["rgba(162,210,255,0.25)", "rgba(255,255,255,0.0)"]}
-          style={styles.aiCardGradient}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        />
-        <View style={styles.aiCardHeader}>
-          <View style={styles.aiSparkleWrap}>
-            <MaterialCommunityIcons name="creation" size={18} color={Colors.light.tint} />
+      <View style={styles.knowledgeCard}>
+        {aiLoading && !aiOverview ? (
+          <View style={styles.knowledgeSkeleton}>
+            {[70, 90, 80, 60].map((w, i) => (
+              <View key={i} style={[styles.skeletonLine, { width: `${w}%` }]} />
+            ))}
           </View>
-          <Text style={styles.aiCardTitle}>AI Overview</Text>
-          <TouchableOpacity onPress={() => setAiExpanded(e => !e)} style={styles.aiExpandBtn}>
-            <Ionicons name={aiExpanded ? "chevron-up" : "chevron-down"} size={18} color={Colors.light.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {aiExpanded && (
+        ) : (
           <>
-            {aiLoading && !aiOverview ? (
-              <View style={styles.aiSkeletonWrap}>
-                {[95, 80, 65].map((w, i) => (
-                  <View key={i} style={[styles.aiSkeletonLine, { width: `${w}%` }]} />
-                ))}
+            <Text style={styles.knowledgeTitle} numberOfLines={2}>
+              {query ? query.charAt(0).toUpperCase() + query.slice(1) : ""}
+            </Text>
+            {topSrc && (
+              <Text style={styles.knowledgeSubtitle} numberOfLines={1}>
+                {getDomain(topSrc.url)}
+              </Text>
+            )}
+            {topSrc && isValidImageUrl(topSrc.media) && (
+              <Image
+                source={{ uri: topSrc.media! }}
+                style={styles.knowledgeImage}
+                resizeMode="cover"
+                onError={() => null}
+              />
+            )}
+            <Text style={styles.knowledgeDesc}>{aiOverview}</Text>
+
+            {topSrc && (
+              <View style={styles.knowledgeSourceRow}>
+                <TouchableOpacity
+                  style={styles.wikiChip}
+                  onPress={() => openLink(topSrc.url)}
+                >
+                  <View style={styles.wikiIconBox}>
+                    <Text style={styles.wikiIconText}>W</Text>
+                  </View>
+                  <Text style={styles.wikiChipText}>{getDomain(topSrc.url)}</Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <Text style={styles.aiText}>{aiOverview}</Text>
             )}
 
-            {topSources.length > 0 && (
-              <View style={styles.aiSources}>
-                <Text style={styles.aiSourcesLabel}>Sources</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.aiSourcesScroll}>
-                  {topSources.map((src, idx) => {
-                    const faviconSrc = isValidImageUrl(getFavicon(src.url)) ? { uri: getFavicon(src.url) } : PLACEHOLDER_IMAGE;
-                    return (
-                      <TouchableOpacity key={idx} style={styles.aiSourceChip} onPress={() => openLink(src.url)}>
-                        <Image source={faviconSrc} style={styles.aiSourceFav} onError={() => null} />
-                        <View>
-                          <Text style={styles.aiSourceNum}>{idx + 1}</Text>
-                          <Text style={styles.aiSourceDomain} numberOfLines={1}>{getDomain(src.url)}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+            <View style={styles.knowledgeFooter}>
+              <Text style={styles.knowledgeSource}>
+                Source:{" "}
+                {topSrc ? (
+                  <Text style={styles.knowledgeSourceLink} onPress={() => topSrc && openLink(topSrc.url)}>
+                    {getDomain(topSrc.url)}
+                  </Text>
+                ) : null}
+              </Text>
+              <View style={styles.feedbackBtns}>
+                <TouchableOpacity style={styles.feedbackBtn}>
+                  <Ionicons name="thumbs-up-outline" size={18} color="#5f6368" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.feedbackBtn}>
+                  <Ionicons name="thumbs-down-outline" size={18} color="#5f6368" />
+                </TouchableOpacity>
               </View>
-            )}
-
-            {aiOverview ? (
-              <TouchableOpacity
-                style={styles.aiListenBtn}
-                onPress={() => Speech.speak(aiOverview, { language: "en-IN", rate: 0.92 })}
-              >
-                <Ionicons name="volume-medium-outline" size={15} color={Colors.light.tint} />
-                <Text style={styles.aiListenText}>Listen to overview</Text>
-              </TouchableOpacity>
-            ) : null}
+            </View>
           </>
         )}
+      </View>
+    );
+  }
+
+  function RegionFilterRow() {
+    return (
+      <View style={styles.regionRow}>
+        <TouchableOpacity style={styles.regionPill}>
+          <Text style={styles.regionText}>
+            Search region: {settings.region || "India"}
+          </Text>
+          <Ionicons name="chevron-down" size={13} color="#444" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.regionPill}>
+          <Text style={styles.regionText}>Any time</Text>
+          <Ionicons name="chevron-down" size={13} color="#444" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -226,28 +247,45 @@ export default function SearchScreen() {
     if (!relatedSearches.length) return null;
     return (
       <View style={styles.relatedCard}>
-        <Text style={styles.relatedTitle}>Related searches</Text>
-        {relatedSearches.map((term, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={styles.relatedRow}
-            onPress={() => { setInputValue(term); search(term, activeFilter); }}
-          >
-            <Ionicons name="search-outline" size={16} color={Colors.light.textSecondary} />
-            <Text style={styles.relatedText}>{term}</Text>
-            <Ionicons name="arrow-up-outline" size={14} color={Colors.light.textMuted} style={styles.relatedArrow} />
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.relatedTitle}>Searches related to {query}</Text>
+        {relatedSearches.map((term, idx) => {
+          const parts = term.split(new RegExp(`(${query})`, "gi"));
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.relatedRow, idx === relatedSearches.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => { setInputValue(term); search(term, activeFilter); }}
+            >
+              <Ionicons name="search-outline" size={16} color="#5f6368" style={{ marginRight: 12 }} />
+              <Text style={styles.relatedText} numberOfLines={1}>
+                {parts.map((p, pi) =>
+                  p.toLowerCase() === query.toLowerCase()
+                    ? <Text key={pi} style={styles.relatedTextNormal}>{p}</Text>
+                    : <Text key={pi} style={styles.relatedTextBold}>{p}</Text>
+                )}
+              </Text>
+              <Ionicons name="search-outline" size={15} color="#5f6368" style={{ marginLeft: "auto" }} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
+  function NextPageButton() {
+    return (
+      <View style={styles.nextPageWrap}>
+        <TouchableOpacity style={styles.nextPageBtn} onPress={() => handleSearch()}>
+          <Text style={styles.nextPageText}>Next</Text>
+          <Ionicons name="arrow-forward" size={16} color="#333" />
+        </TouchableOpacity>
       </View>
     );
   }
 
   function ImageResult({ item }: { item: SearchResult }) {
     const src = item.media || item.url;
-    const imageSource = isValidImageUrl(src) ? { uri: src } : PLACEHOLDER_IMAGE;
-    const faviconSource = isValidImageUrl(getFavicon(item.url)) ? { uri: getFavicon(item.url) } : PLACEHOLDER_IMAGE;
     const [err, setErr] = useState(false);
-    
     return (
       <TouchableOpacity
         style={styles.imageCard}
@@ -261,73 +299,134 @@ export default function SearchScreen() {
           onError={() => setErr(true)}
         />
         <View style={styles.imageFooter}>
-          <Image source={faviconSource} style={styles.imageFav} onError={() => null} />
+          <Image source={{ uri: getFavicon(item.url) }} style={styles.imageFav} onError={() => null} />
           <Text style={styles.imageDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
         </View>
       </TouchableOpacity>
     );
   }
 
-  function ResultCard({ item }: { item: SearchResult }) {
+  function VideoResult({ item }: { item: SearchResult }) {
+    const [err, setErr] = useState(false);
+    const mediaSource = !err && isValidImageUrl(item.media) ? { uri: item.media! } : PLACEHOLDER_IMAGE;
+    return (
+      <TouchableOpacity style={styles.videoRow} onPress={() => openLink(item.url)} activeOpacity={0.85}>
+        <View style={styles.videoThumbWrap}>
+          <Image
+            source={mediaSource}
+            style={styles.videoThumb}
+            resizeMode="cover"
+            onError={() => setErr(true)}
+          />
+          <View style={styles.videoPlayOverlay}>
+            <View style={styles.videoPlayCircle}>
+              <Ionicons name="play" size={14} color="#fff" />
+            </View>
+          </View>
+          {item.published && (
+            <View style={styles.videoDuration}>
+              <Text style={styles.videoDurationText}>{item.published.slice(0, 5)}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.videoInfo}>
+          <Text style={styles.videoTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.videoSource} numberOfLines={1}>{getDomain(item.url)}</Text>
+          {item.published && <Text style={styles.videoDate} numberOfLines={1}>{item.published}</Text>}
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  function ResultCard({ item, index }: { item: SearchResult; index: number }) {
     if (activeFilter === "images") return <ImageResult item={item} />;
-    const saved = isSaved(item.url);
+    if (activeFilter === "videos") {
+      return (
+        <View>
+          <VideoResult item={item} />
+          <View style={styles.separator} />
+        </View>
+      );
+    }
     const faviconSource = isValidImageUrl(getFavicon(item.url)) ? { uri: getFavicon(item.url) } : PLACEHOLDER_IMAGE;
     const mediaSource = isValidImageUrl(item.media) ? { uri: item.media } : PLACEHOLDER_IMAGE;
-    
+
     return (
       <TouchableOpacity style={styles.resultCard} onPress={() => openLink(item.url)} activeOpacity={0.85}>
         <View style={styles.cardMeta}>
-          <View style={styles.cardMetaLeft}>
-            <Image source={faviconSource} style={styles.cardFav} onError={() => null} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardDomain} numberOfLines={1}>{getDomain(item.url)}</Text>
-              {item.source ? <Text style={styles.cardSource} numberOfLines={1}>{item.source}</Text> : null}
-            </View>
+          <Image source={faviconSource} style={styles.cardFav} onError={() => null} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardSource} numberOfLines={1}>{getDomain(item.url)}</Text>
+            <Text style={styles.cardBreadcrumb} numberOfLines={1}>{getUrlBreadcrumb(item.url)}</Text>
           </View>
-          <TouchableOpacity onPress={() => toggleSave(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={19} color={saved ? Colors.light.tint : Colors.light.textMuted} />
+          <TouchableOpacity style={styles.moreBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="ellipsis-vertical" size={18} color="#5f6368" />
           </TouchableOpacity>
         </View>
-
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
         {item.description ? <Text style={styles.cardDesc} numberOfLines={3}>{item.description}</Text> : null}
-
         {item.media && isValidImageUrl(item.media) ? (
-          <Image source={mediaSource} style={styles.cardMedia} resizeMode="cover" onError={() => null} />
-        ) : null}
-
-        {activeFilter === "shopping" && item.price ? (
-          <View style={styles.priceTag}>
-            <Text style={styles.priceText}>{item.price}</Text>
+          <View style={styles.cardMediaRow}>
+            <Image source={mediaSource} style={styles.cardMedia} resizeMode="cover" onError={() => null} />
+            <Text style={styles.cardMediaCaption} numberOfLines={3}>{item.description}</Text>
           </View>
         ) : null}
-
-        {activeFilter === "news" && item.published ? (
-          <Text style={styles.publishedText}>{item.published}</Text>
+        {activeFilter === "shopping" && item.price ? (
+          <Text style={styles.priceText}>{item.price}</Text>
         ) : null}
+        {activeFilter === "news" && item.published ? (
+          <Text style={styles.publishedText}>{getDomain(item.url)} · {item.published}</Text>
+        ) : null}
+        <View style={styles.separator} />
       </TouchableOpacity>
     );
   }
 
   function ListHeader() {
     const isFilteredView = activeFilter !== "all";
+    if (activeFilter === "videos") {
+      return (
+        <>
+          <RegionFilterRow />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>Videos</Text>
+          </View>
+        </>
+      );
+    }
     return (
       <>
-        {!isFilteredView && <AiOverviewCard />}
-        {!isFilteredView && <RelatedSearches />}
-        {results.length > 0 && !isFilteredView && (
-          <Text style={styles.resultCount}>About {results.length}+ results</Text>
+        <RegionFilterRow />
+        {!isFilteredView && <KnowledgeCard />}
+        {!isFilteredView && results.length > 0 && (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>Web Results</Text>
+          </View>
         )}
       </>
     );
   }
 
+  function ListFooter() {
+    if (!results.length) return null;
+    return (
+      <>
+        <RelatedSearches />
+        <NextPageButton />
+      </>
+    );
+  }
+
   function EmptyState() {
-    if (isLoading) return null;
+    if (isLoading) return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="small" color="#5f6368" />
+      </View>
+    );
     if (error) {
       return (
         <View style={styles.emptyWrap}>
-          <Ionicons name="cloud-offline-outline" size={52} color={Colors.light.textMuted} />
+          <Ionicons name="cloud-offline-outline" size={48} color="#bbb" />
           <Text style={styles.emptyTitle}>Connection error</Text>
           <Text style={styles.emptyMsg}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => handleSearch()}>
@@ -339,7 +438,7 @@ export default function SearchScreen() {
     if (inputValue && !results.length) {
       return (
         <View style={styles.emptyWrap}>
-          <Ionicons name="search-outline" size={52} color={Colors.light.textMuted} />
+          <Ionicons name="search-outline" size={48} color="#bbb" />
           <Text style={styles.emptyTitle}>No results found</Text>
           <Text style={styles.emptyMsg}>Try different keywords or check your connection</Text>
         </View>
@@ -348,11 +447,7 @@ export default function SearchScreen() {
     if (!inputValue) {
       return (
         <View style={styles.emptyWrap}>
-          <View style={styles.emptyLogoRow}>
-            {LOGO_LETTERS.map((l, i) => (
-              <Text key={i} style={[styles.emptyLogo, { color: LOGO_COLORS[i] }]}>{l}</Text>
-            ))}
-          </View>
+          <Text style={styles.emptyBrand}>STREEKX</Text>
           <Text style={styles.emptyMsg}>Enter a query to search</Text>
         </View>
       );
@@ -364,11 +459,25 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <View style={{ height: topPad, backgroundColor: Colors.light.backgroundCard }} />
-      
-      <View style={styles.headerBrand}>
-        <Text style={styles.headerBrandText}>STREEKX</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent={false} />
+      <View style={{ height: topPad, backgroundColor: "#fff" }} />
+
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBackBtn} onPress={() => router.back()}>
+          <Ionicons name="exit-outline" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerBrand}>STREEKX</Text>
+
+        <View style={styles.headerRight}>
+          <View style={styles.leafWrap}>
+            <Text style={styles.leafEmoji}>🌿</Text>
+            <Text style={styles.leafCount}>2</Text>
+          </View>
+          <TouchableOpacity style={styles.profileBtn} onPress={() => router.push("/ai-assistant")}>
+            <Ionicons name="person" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading && (
@@ -382,42 +491,43 @@ export default function SearchScreen() {
           ref={listRef}
           data={results}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ResultCard item={item} />}
+          renderItem={({ item, index }) => <ResultCard item={item} index={index} />}
           numColumns={numCols}
           key={numCols}
-          contentContainerStyle={[styles.listPad, { paddingBottom: totalBottom + 20 }]}
+          contentContainerStyle={[styles.listPad, { paddingBottom: 20 }]}
           ListHeaderComponent={<ListHeader />}
           ListEmptyComponent={<EmptyState />}
+          ListFooterComponent={results.length > 0 ? <ListFooter /> : null}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
         />
 
-        <View style={[styles.bottomBar, { paddingBottom: botPad + 4 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterScroll}
             style={styles.filterBar}
           >
-            {FILTERS.map((f) => (
-              <TouchableOpacity
-                key={f.key}
-                style={[styles.filterPill, activeFilter === f.key && styles.filterPillActive]}
-                onPress={() => handleFilter(f.key)}
-              >
-                <Text style={[styles.filterPillText, activeFilter === f.key && styles.filterPillTextActive]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {FILTERS.map((f) => {
+              const isActive = activeFilter === f.key;
+              return (
+                <TouchableOpacity
+                  key={f.key}
+                  style={styles.filterTab}
+                  onPress={() => handleFilter(f.key)}
+                >
+                  <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                    {f.label}
+                  </Text>
+                  {isActive && <View style={styles.filterTabUnderline} />}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           <View style={styles.searchRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={20} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
-
             <View style={styles.searchInputWrap}>
               <TextInput
                 ref={inputRef}
@@ -426,23 +536,22 @@ export default function SearchScreen() {
                 onChangeText={setInputValue}
                 onSubmitEditing={() => handleSearch()}
                 placeholder="Search StreekX..."
-                placeholderTextColor={Colors.light.textMuted}
+                placeholderTextColor="#9aa0a6"
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               {inputValue.length > 0 && (
-                <TouchableOpacity onPress={() => setInputValue("")} style={{ padding: 4 }}>
-                  <Ionicons name="close-circle" size={16} color={Colors.light.textMuted} />
+                <TouchableOpacity onPress={() => setInputValue("")} style={styles.clearBtn}>
+                  <Ionicons name="close" size={18} color="#5f6368" />
                 </TouchableOpacity>
               )}
+              <TouchableOpacity onPress={() => handleSearch()} style={styles.searchIconBtn}>
+                <Ionicons name="search" size={20} color="#5f6368" />
+              </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.actionBtn} onPress={() => router.push("/ai-assistant")}>
-              <MaterialCommunityIcons name="robot-excited-outline" size={20} color={Colors.light.tint} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, isListening && styles.actionBtnLive]} onPress={startVoice}>
-              <Ionicons name={isListening ? "mic" : "mic-outline"} size={20} color={isListening ? "#FFF" : Colors.light.tint} />
+            <TouchableOpacity style={[styles.micBtn, isListening && styles.micBtnActive]} onPress={startVoice}>
+              <Ionicons name={isListening ? "mic" : "mic-outline"} size={20} color={isListening ? "#fff" : "#5f6368"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -452,11 +561,11 @@ export default function SearchScreen() {
         <View style={styles.voiceOverlay}>
           <View style={[styles.voiceCard, { paddingBottom: botPad + 32 }]}>
             <TouchableOpacity onPress={() => { stopVoice(); setVoiceModal(false); }} style={styles.voiceClose}>
-              <Ionicons name="close" size={24} color={Colors.light.text} />
+              <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.voiceTitle}>{isListening ? "Listening..." : "Voice Search"}</Text>
             <Animated.View style={[styles.micCircle, { transform: [{ scale: micPulse }] }]}>
-              <LinearGradient colors={[Colors.light.tint, "#0EA5E9"]} style={styles.micCircleInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <LinearGradient colors={["#5bb96b", "#3d9e50"]} style={styles.micCircleInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <Ionicons name="mic" size={42} color="#FFF" />
               </LinearGradient>
             </Animated.View>
@@ -481,7 +590,6 @@ export default function SearchScreen() {
         </View>
       </Modal>
 
-      {/* Image Detail Modal */}
       <Modal
         visible={!!selectedImage}
         transparent
@@ -550,385 +658,545 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  loadStrip: { height: 2, backgroundColor: "transparent", overflow: "hidden" },
-  loadStripInner: { flex: 1, backgroundColor: Colors.light.tint },
-  listPad: { paddingHorizontal: 0, paddingTop: 12 },
-  
-  headerBrand: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    paddingTop: 18,
-    backgroundColor: Colors.light.background,
-    alignItems: "center",
-  },
-  headerBrandText: {
-    fontFamily: "Inter_800Black",
-    fontSize: 22,
-    color: "#1A73E8",
-    letterSpacing: 0.8,
-    fontWeight: "900",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
 
-  aiCard: {
-    borderRadius: 20,
-    borderWidth: 0,
-    borderColor: "transparent",
-    backgroundColor: "#FFF",
-    padding: 20,
-    marginBottom: 16,
-    marginHorizontal: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  aiCardGradient: { display: "none" },
-  aiCardHeader: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 0,
   },
-  aiSparkleWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(162,210,255,0.3)",
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#5bb96b",
     alignItems: "center",
     justifyContent: "center",
   },
-  aiCardTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    color: Colors.light.text,
+  headerBrand: {
     flex: 1,
+    textAlign: "center",
+    fontFamily: "Inter_800Black",
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#000",
+    letterSpacing: 1.5,
   },
-  aiExpandBtn: { padding: 4 },
-  aiSkeletonWrap: { gap: 8, marginBottom: 14 },
-  aiSkeletonLine: {
-    height: 14,
-    backgroundColor: "rgba(162,210,255,0.3)",
-    borderRadius: 4,
-  },
-  aiText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14.5,
-    color: Colors.light.text,
-    lineHeight: 23,
-    marginBottom: 14,
-  },
-  aiSources: { marginBottom: 10 },
-  aiSourcesLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  aiSourcesScroll: {},
-  aiSourceChip: {
+  headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 10,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    minWidth: 120,
-    maxWidth: 160,
   },
-  aiSourceFav: { width: 20, height: 20, borderRadius: 4 },
-  aiSourceNum: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    color: Colors.light.tint,
-  },
-  aiSourceDomain: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.light.text,
-  },
-  aiListenBtn: {
+  leafWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    alignSelf: "flex-start",
-    marginTop: 4,
+    gap: 3,
   },
-  aiListenText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: Colors.light.tint,
+  leafEmoji: { fontSize: 18 },
+  leafCount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#222",
+    fontFamily: "Inter_700Bold",
+  },
+  profileBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#444",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  relatedCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    padding: 14,
+  loadStrip: { height: 2, backgroundColor: "#e8f5e9", overflow: "hidden" },
+  loadStripInner: { flex: 1, backgroundColor: "#5bb96b" },
+
+  listPad: { paddingTop: 0 },
+
+  regionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0e8",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#d8d8cc",
+  },
+  regionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  regionText: {
+    fontSize: 13,
+    color: "#333",
+    fontFamily: "Inter_400Regular",
+  },
+
+  knowledgeCard: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
+    marginBottom: 4,
+  },
+  knowledgeSkeleton: { gap: 10, paddingBottom: 20 },
+  skeletonLine: {
+    height: 13,
+    backgroundColor: "#eeeeee",
+    borderRadius: 3,
+  },
+  knowledgeTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
+    color: "#202124",
+    marginBottom: 2,
+  },
+  knowledgeSubtitle: {
+    fontSize: 13,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
+    marginBottom: 12,
+  },
+  knowledgeImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 14,
+    backgroundColor: "#f0f0f0",
+  },
+  knowledgeDesc: {
+    fontSize: 14,
+    color: "#202124",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
     marginBottom: 14,
   },
-  relatedTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.light.text,
-    marginBottom: 8,
+  knowledgeSourceRow: {
+    flexDirection: "row",
+    marginBottom: 14,
   },
-  relatedRow: {
+  wikiChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#dadce0",
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignSelf: "flex-start",
+  },
+  wikiIconBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wikiIconText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
+  },
+  wikiChipText: {
+    fontSize: 13,
+    color: "#1558d6",
+    fontFamily: "Inter_400Regular",
+  },
+  knowledgeFooter: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e0e0e0",
   },
-  relatedText: {
+  knowledgeSource: {
+    fontSize: 12,
+    color: "#5f6368",
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: Colors.light.text,
     flex: 1,
   },
-  relatedArrow: { transform: [{ rotate: "45deg" }] },
+  knowledgeSourceLink: {
+    color: "#1558d6",
+    textDecorationLine: "underline",
+  },
+  feedbackBtns: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  feedbackBtn: {
+    padding: 6,
+  },
 
-  resultCount: {
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    color: "#5f6368",
     fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.light.textMuted,
-    marginBottom: 8,
-    marginLeft: 2,
+  },
+
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#e0e0e0",
+    marginHorizontal: 16,
   },
 
   resultCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    marginHorizontal: 12,
-    borderWidth: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
   },
   cardMeta: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-    justifyContent: "space-between",
-  },
-  cardMetaLeft: {
-    flexDirection: "row",
-    alignItems: "center",
+    marginBottom: 4,
     gap: 8,
-    flex: 1,
-    marginRight: 8,
   },
-  cardFav: { width: 20, height: 20, borderRadius: 4 },
-  cardDomain: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-  },
+  cardFav: { width: 18, height: 18, borderRadius: 9 },
   cardSource: {
+    fontSize: 13,
+    color: "#202124",
     fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    color: Colors.light.textMuted,
   },
+  cardBreadcrumb: {
+    fontSize: 12,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
+  },
+  moreBtn: { marginLeft: "auto", padding: 4 },
   cardTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 17,
-    color: "#1A73E8",
+    fontSize: 18,
+    color: "#1558d6",
+    fontFamily: "Inter_400Regular",
     lineHeight: 24,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   cardDesc: {
+    fontSize: 13,
+    color: "#202124",
     fontFamily: "Inter_400Regular",
-    fontSize: 13.5,
-    color: "#3c4043",
-    lineHeight: 20,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  cardMediaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 10,
   },
   cardMedia: {
-    width: "100%",
-    height: 160,
-    borderRadius: 10,
-    marginTop: 10,
+    width: 120,
+    height: 80,
+    borderRadius: 6,
   },
-  priceTag: {
-    marginTop: 8,
-    backgroundColor: "#ECFDF5",
-    borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    alignSelf: "flex-start",
+  cardMediaCaption: {
+    flex: 1,
+    fontSize: 13,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
   },
   priceText: {
+    fontSize: 14,
+    color: "#188038",
     fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: "#059669",
+    marginBottom: 8,
   },
   publishedText: {
+    fontSize: 12,
+    color: "#5f6368",
     fontFamily: "Inter_400Regular",
+    marginBottom: 8,
+  },
+
+  videoRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    backgroundColor: "#fff",
+  },
+  videoThumbWrap: {
+    width: 130,
+    height: 88,
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: "#000",
+    flexShrink: 0,
+  },
+  videoThumb: { width: "100%", height: "100%" },
+  videoPlayOverlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoPlayCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoDuration: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  videoDurationText: {
     fontSize: 11,
-    color: Colors.light.textMuted,
-    marginTop: 6,
+    color: "#fff",
+    fontFamily: "Inter_400Regular",
+  },
+  videoInfo: { flex: 1 },
+  videoTitle: {
+    fontSize: 15,
+    color: "#1558d6",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+    marginBottom: 4,
+  },
+  videoSource: {
+    fontSize: 12,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
+    marginBottom: 2,
+  },
+  videoDate: {
+    fontSize: 12,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
   },
 
   imageCard: {
     flex: 1,
-    margin: 4,
-    borderRadius: 12,
+    margin: 3,
+    borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: Colors.light.filterInactive,
-    maxWidth: (width - 28) / 2,
+    backgroundColor: "#f0f0f0",
+    maxWidth: (width - 18) / 2,
   },
   imageThumb: { width: "100%", aspectRatio: 1 },
   imageFooter: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    padding: 7,
+    padding: 6,
+    backgroundColor: "#fff",
   },
-  imageFav: { width: 14, height: 14, borderRadius: 3 },
+  imageFav: { width: 14, height: 14, borderRadius: 7 },
   imageDomain: {
-    fontFamily: "Inter_400Regular",
     fontSize: 11,
-    color: Colors.light.textSecondary,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
     flex: 1,
   },
 
+  relatedCard: {
+    backgroundColor: "#fff",
+    paddingTop: 14,
+    paddingBottom: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e0e0e0",
+    marginTop: 8,
+  },
+  relatedTitle: {
+    fontSize: 14,
+    color: "#202124",
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  relatedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
+  },
+  relatedText: {
+    fontSize: 14,
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+  },
+  relatedTextNormal: {
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
+  },
+  relatedTextBold: {
+    color: "#202124",
+    fontFamily: "Inter_700Bold",
+  },
+
+  nextPageWrap: {
+    alignItems: "center",
+    paddingVertical: 28,
+  },
+  nextPageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#dadce0",
+    borderRadius: 22,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+  },
+  nextPageText: {
+    fontSize: 15,
+    color: "#333",
+    fontFamily: "Inter_400Regular",
+  },
+
+  loadingWrap: {
+    paddingTop: 60,
+    alignItems: "center",
+  },
   emptyWrap: {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 80,
-    gap: 16,
+    gap: 14,
     paddingHorizontal: 40,
   },
-  emptyLogoRow: { flexDirection: "row" },
-  emptyLogo: {
-    fontFamily: "Caveat_700Bold",
-    fontSize: 42,
+  emptyBrand: {
+    fontFamily: "Inter_800Black",
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#000",
     letterSpacing: 2,
   },
   emptyTitle: {
+    fontSize: 17,
+    color: "#202124",
     fontFamily: "Inter_600SemiBold",
-    fontSize: 18,
-    color: Colors.light.text,
   },
   emptyMsg: {
-    fontFamily: "Inter_400Regular",
     fontSize: 14,
-    color: Colors.light.textSecondary,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
   },
   retryBtn: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    borderWidth: 1,
+    borderColor: "#dadce0",
+    borderRadius: 22,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
     marginTop: 4,
   },
   retryText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    color: "#FFF",
+    fontSize: 14,
+    color: "#333",
+    fontFamily: "Inter_400Regular",
   },
 
   bottomBar: {
-    backgroundColor: "#FFF",
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 10,
+    backgroundColor: "#fff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e0e0e0",
   },
-  filterBar: { maxHeight: 52 },
+  filterBar: { maxHeight: 44 },
   filterScroll: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
+    paddingHorizontal: 6,
     flexDirection: "row",
     alignItems: "center",
   },
-  filterPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+  filterTab: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
+    alignItems: "center",
+    position: "relative",
   },
-  filterPillActive: {
-    backgroundColor: Colors.light.tint,
-    borderColor: Colors.light.tint,
+  filterTabText: {
+    fontSize: 14,
+    color: "#5f6368",
+    fontFamily: "Inter_400Regular",
   },
-  filterPillText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: "#333333",
+  filterTabTextActive: {
+    color: "#202124",
+    fontFamily: "Inter_600SemiBold",
   },
-  filterPillTextActive: {
-    color: "#FFF",
+  filterTabUnderline: {
+    position: "absolute",
+    bottom: 0,
+    left: 6,
+    right: 6,
+    height: 2.5,
+    backgroundColor: "#202124",
+    borderRadius: 2,
   },
 
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingTop: 8,
-    paddingBottom: 4,
-    gap: 7,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.light.filterInactive,
+    paddingBottom: 10,
+    gap: 8,
   },
   searchInputWrap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.light.filterInactive,
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    height: 42,
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    height: 46,
     borderWidth: 1,
-    borderColor: Colors.light.border,
-    gap: 4,
+    borderColor: "#dadce0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
+    fontSize: 15,
+    color: "#202124",
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: Colors.light.text,
     height: "100%",
   },
-  actionBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(162,210,255,0.2)",
+  clearBtn: {
+    padding: 4,
+    marginRight: 4,
+  },
+  searchIconBtn: {
+    padding: 4,
+  },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f1f3f4",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
   },
-  actionBtnLive: {
-    backgroundColor: "#EF4444",
-    borderColor: "#EF4444",
+  micBtnActive: {
+    backgroundColor: "#ea4335",
   },
 
   voiceOverlay: {
@@ -938,8 +1206,8 @@ const styles = StyleSheet.create({
   },
   voiceCard: {
     backgroundColor: "#FFF",
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 16,
     paddingHorizontal: 32,
     alignItems: "center",
@@ -947,57 +1215,53 @@ const styles = StyleSheet.create({
   },
   voiceClose: { position: "absolute", right: 20, top: 16 },
   voiceTitle: {
+    fontSize: 17,
+    color: "#202124",
     fontFamily: "Inter_600SemiBold",
-    fontSize: 18,
-    color: Colors.light.text,
     marginTop: 20,
   },
-  micCircle: { width: 100, height: 100, borderRadius: 50, overflow: "hidden" },
+  micCircle: { width: 96, height: 96, borderRadius: 48, overflow: "hidden" },
   micCircleInner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.light.tint,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
   },
   voiceTranscript: {
+    fontSize: 15,
+    color: "#202124",
     fontFamily: "Inter_400Regular",
-    fontSize: 16,
-    color: Colors.light.text,
     textAlign: "center",
     fontStyle: "italic",
   },
   voiceHint: {
+    fontSize: 14,
+    color: "#5f6368",
     fontFamily: "Inter_400Regular",
-    fontSize: 15,
-    color: Colors.light.textSecondary,
   },
   voiceStartBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.light.tint,
+    backgroundColor: "#5bb96b",
     borderRadius: 26,
     paddingVertical: 13,
     paddingHorizontal: 32,
   },
   voiceStartText: {
-    fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#FFF",
+    fontFamily: "Inter_600SemiBold",
   },
   voiceStopBtn: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "#fee2e2",
     borderRadius: 26,
     paddingVertical: 13,
     paddingHorizontal: 40,
   },
   voiceStopText: {
-    fontFamily: "Inter_600SemiBold",
     fontSize: 15,
-    color: "#EF4444",
+    color: "#ea4335",
+    fontFamily: "Inter_600SemiBold",
   },
 
   imgModalOverlay: {
@@ -1020,7 +1284,7 @@ const styles = StyleSheet.create({
   imgModalFull: {
     width: "100%",
     height: 300,
-    borderRadius: 14,
+    borderRadius: 12,
     marginBottom: 14,
   },
   imgModalInfo: {
@@ -1030,17 +1294,17 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 4,
   },
-  imgModalFav: { width: 22, height: 22, borderRadius: 4 },
+  imgModalFav: { width: 22, height: 22, borderRadius: 11 },
   imgModalTitle: {
-    fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     color: "#FFF",
+    fontFamily: "Inter_600SemiBold",
     lineHeight: 20,
   },
   imgModalDomain: {
-    fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: "rgba(255,255,255,0.6)",
+    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   imgVisitBtn: {
@@ -1048,25 +1312,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 24,
+    backgroundColor: "#5bb96b",
+    borderRadius: 22,
     paddingVertical: 12,
     marginHorizontal: 4,
     marginBottom: 20,
   },
   imgVisitText: {
-    fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#FFF",
+    fontFamily: "Inter_600SemiBold",
   },
   relatedImgsWrap: {
     paddingHorizontal: 14,
     paddingBottom: 32,
   },
   relatedImgsTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
+    fontSize: 12,
     color: "rgba(255,255,255,0.7)",
+    fontFamily: "Inter_600SemiBold",
     marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -1074,6 +1338,6 @@ const styles = StyleSheet.create({
   relatedImg: {
     width: 90,
     height: 90,
-    borderRadius: 10,
+    borderRadius: 8,
   },
 });
