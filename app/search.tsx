@@ -34,15 +34,14 @@ const { width } = Dimensions.get("window");
 const LOGO_COLORS = ["#1E6FD9","#EF4444","#F59E0B","#1E6FD9","#22C55E","#EF4444","#8B5CF6"];
 const LOGO_LETTERS = ["s","t","r","e","e","k","x"];
 
-const FILTERS: { key: SearchFilter; label: string; icon: string }[] = [
-  { key: "ai",       label: "AI Mode",  icon: "robot-outline" },
-  { key: "all",      label: "All",      icon: "earth-outline" },
-  { key: "images",   label: "Images",   icon: "image-outline" },
-  { key: "videos",   label: "Videos",   icon: "play-circle-outline" },
-  { key: "news",     label: "News",     icon: "newspaper-outline" },
-  { key: "shopping", label: "Shopping", icon: "cart-outline" },
-  { key: "books",    label: "Books",    icon: "book-outline" },
-  { key: "maps",     label: "Maps",     icon: "map-outline" },
+const FILTERS: { key: SearchFilter; label: string }[] = [
+  { key: "all",      label: "All" },
+  { key: "images",   label: "Images" },
+  { key: "videos",   label: "Videos" },
+  { key: "news",     label: "News" },
+  { key: "shopping", label: "Shopping" },
+  { key: "maps",     label: "Maps" },
+  { key: "books",    label: "Books" },
 ];
 
 function getDomain(url: string): string {
@@ -404,15 +403,10 @@ export default function SearchScreen() {
             {FILTERS.map((f) => (
               <TouchableOpacity
                 key={f.key}
-                style={[styles.filterChip, activeFilter === f.key && styles.filterChipOn]}
+                style={[styles.filterPill, activeFilter === f.key && styles.filterPillActive]}
                 onPress={() => handleFilter(f.key)}
               >
-                <MaterialCommunityIcons
-                  name={f.icon as any}
-                  size={13}
-                  color={activeFilter === f.key ? "#FFF" : Colors.light.textSecondary}
-                />
-                <Text style={[styles.filterLabel, activeFilter === f.key && styles.filterLabelOn]}>
+                <Text style={[styles.filterPillText, activeFilter === f.key && styles.filterPillTextActive]}>
                   {f.label}
                 </Text>
               </TouchableOpacity>
@@ -844,33 +838,32 @@ const styles = StyleSheet.create({
   },
   filterBar: { maxHeight: 52 },
   filterScroll: {
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    gap: 7,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: Colors.light.filterInactive,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    paddingVertical: 10,
+    gap: 10,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  filterChipOn: {
+  filterPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  filterPillActive: {
     backgroundColor: Colors.light.tint,
     borderColor: Colors.light.tint,
   },
-  filterLabel: {
+  filterPillText: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    color: Colors.light.textSecondary,
+    fontSize: 13,
+    color: "#333333",
   },
-  filterLabelOn: { color: "#FFF" },
+  filterPillTextActive: {
+    color: "#FFF",
+  },
 
   searchRow: {
     flexDirection: "row",
