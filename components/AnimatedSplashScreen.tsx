@@ -1,12 +1,22 @@
 import React, { useEffect, useRef } from "react";
 import {
-  View,
   StyleSheet,
-  Animated,
+  Animated as RNAnimated,
   Dimensions,
   Image,
-  Text,
+  View,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withDelay,
+  withRepeat,
+  withSequence,
+  runOnJS,
+  Easing,
+} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, {
   Path,
@@ -18,55 +28,47 @@ import Svg, {
   LinearGradient as SvgLinearGradient,
   RadialGradient as SvgRadialGradient,
   Ellipse,
+  Line,
 } from "react-native-svg";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const LOGO_SIZE = 130;
-const WINDOW_W = W * 0.86;
-const WINDOW_H = H * 0.66;
-const WINDOW_TOP = H * 0.09;
+const LOGO_SIZE = 138;
+const LOGO_CX = W * 0.5;
+const LOGO_CY = H * 0.44;
 
-const LOGO_CENTER_X = W * 0.5 - LOGO_SIZE / 2;
-const LOGO_CENTER_Y = WINDOW_TOP + WINDOW_H * 0.415 - LOGO_SIZE / 2;
-
-const STAR_DATA = [
-  { x: 0.07, y: 0.04, s: 2.5, d: 0 },
-  { x: 0.22, y: 0.02, s: 1.5, d: 300 },
-  { x: 0.41, y: 0.07, s: 3, d: 600 },
-  { x: 0.62, y: 0.03, s: 2, d: 150 },
-  { x: 0.79, y: 0.06, s: 1.8, d: 450 },
-  { x: 0.91, y: 0.14, s: 2.2, d: 750 },
-  { x: 0.05, y: 0.18, s: 1.5, d: 200 },
-  { x: 0.33, y: 0.15, s: 2.8, d: 550 },
-  { x: 0.55, y: 0.21, s: 1.5, d: 100 },
-  { x: 0.74, y: 0.12, s: 2, d: 400 },
-  { x: 0.16, y: 0.28, s: 1.8, d: 700 },
-  { x: 0.87, y: 0.24, s: 2.5, d: 250 },
-  { x: 0.03, y: 0.38, s: 1.5, d: 500 },
-  { x: 0.48, y: 0.33, s: 2, d: 850 },
-  { x: 0.68, y: 0.40, s: 1.5, d: 350 },
-  { x: 0.93, y: 0.36, s: 2.2, d: 50 },
-  { x: 0.20, y: 0.72, s: 1.8, d: 650 },
-  { x: 0.82, y: 0.76, s: 2.5, d: 180 },
-  { x: 0.11, y: 0.80, s: 1.5, d: 430 },
-  { x: 0.60, y: 0.84, s: 1.8, d: 720 },
-  { x: 0.37, y: 0.88, s: 2, d: 290 },
-  { x: 0.75, y: 0.91, s: 1.5, d: 560 },
-  { x: 0.50, y: 0.93, s: 1.8, d: 80 },
-  { x: 0.26, y: 0.96, s: 2, d: 620 },
-  { x: 0.89, y: 0.88, s: 1.5, d: 380 },
-];
-
-const PARTICLE_DATA = [
-  { angle: 0, dist: 70 },
-  { angle: 45, dist: 60 },
-  { angle: 90, dist: 80 },
-  { angle: 135, dist: 55 },
-  { angle: 180, dist: 75 },
-  { angle: 225, dist: 65 },
-  { angle: 270, dist: 70 },
-  { angle: 315, dist: 60 },
+const STARS = [
+  { x: 0.09, y: 0.06, r: 1.3, d: 0 },
+  { x: 0.22, y: 0.03, r: 0.9, d: 200 },
+  { x: 0.38, y: 0.08, r: 1.6, d: 500 },
+  { x: 0.55, y: 0.04, r: 1.1, d: 100 },
+  { x: 0.70, y: 0.07, r: 1.4, d: 350 },
+  { x: 0.86, y: 0.05, r: 0.9, d: 650 },
+  { x: 0.14, y: 0.15, r: 1.2, d: 280 },
+  { x: 0.31, y: 0.13, r: 1.8, d: 420 },
+  { x: 0.48, y: 0.17, r: 1.0, d: 750 },
+  { x: 0.64, y: 0.12, r: 1.5, d: 180 },
+  { x: 0.79, y: 0.16, r: 1.2, d: 530 },
+  { x: 0.93, y: 0.10, r: 1.4, d: 70 },
+  { x: 0.07, y: 0.26, r: 1.1, d: 600 },
+  { x: 0.25, y: 0.24, r: 1.6, d: 340 },
+  { x: 0.44, y: 0.29, r: 1.0, d: 460 },
+  { x: 0.60, y: 0.22, r: 1.8, d: 220 },
+  { x: 0.75, y: 0.28, r: 1.3, d: 710 },
+  { x: 0.91, y: 0.23, r: 1.0, d: 390 },
+  { x: 0.17, y: 0.36, r: 1.4, d: 55 },
+  { x: 0.35, y: 0.32, r: 1.2, d: 580 },
+  { x: 0.52, y: 0.38, r: 1.6, d: 130 },
+  { x: 0.68, y: 0.35, r: 1.0, d: 440 },
+  { x: 0.83, y: 0.34, r: 1.5, d: 310 },
+  { x: 0.10, y: 0.70, r: 1.1, d: 490 },
+  { x: 0.28, y: 0.75, r: 1.4, d: 240 },
+  { x: 0.46, y: 0.72, r: 1.0, d: 680 },
+  { x: 0.63, y: 0.77, r: 1.6, d: 160 },
+  { x: 0.80, y: 0.73, r: 1.2, d: 560 },
+  { x: 0.19, y: 0.83, r: 1.4, d: 320 },
+  { x: 0.54, y: 0.87, r: 1.1, d: 480 },
+  { x: 0.78, y: 0.85, r: 1.5, d: 200 },
 ];
 
 export default function AnimatedSplashScreen({
@@ -74,559 +76,530 @@ export default function AnimatedSplashScreen({
 }: {
   onFinish: () => void;
 }) {
-  const bgOpacity = useRef(new Animated.Value(0)).current;
-  const windowScale = useRef(new Animated.Value(0.12)).current;
-  const windowOpacity = useRef(new Animated.Value(0)).current;
-  const cometTX = useRef(new Animated.Value(W * 0.58)).current;
-  const cometTY = useRef(new Animated.Value(-H * 0.38)).current;
-  const cometOpacity = useRef(new Animated.Value(0)).current;
-  const cometScale = useRef(new Animated.Value(1)).current;
-  const burstScale = useRef(new Animated.Value(0)).current;
-  const burstOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoGlowPulse = useRef(new Animated.Value(0.4)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const subtitleOpacity = useRef(new Animated.Value(0)).current;
-  const screenFade = useRef(new Animated.Value(1)).current;
+  const bgOpacity = useSharedValue(0);
+  const frameOpacity = useSharedValue(0);
+  const moonOpacity = useSharedValue(0);
+  const cometTX = useSharedValue(W * 0.52);
+  const cometTY = useSharedValue(-H * 0.42);
+  const cometOpacity = useSharedValue(0);
+  const trailOpacity = useSharedValue(0);
+  const burstScale = useSharedValue(0.1);
+  const burstOpacity = useSharedValue(0);
+  const ringScale = useSharedValue(0.3);
+  const ringOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0);
+  const logoOpacity = useSharedValue(0);
+  const glowPulse = useSharedValue(0.3);
+  const textOpacity = useSharedValue(0);
+  const textTransY = useSharedValue(22);
+  const subOpacity = useSharedValue(0);
+  const subTransY = useSharedValue(14);
+  const screenOpacity = useSharedValue(1);
 
   const starOpacities = useRef(
-    STAR_DATA.map(() => new Animated.Value(Math.random() * 0.5 + 0.2))
-  ).current;
-
-  const particleAnims = useRef(
-    PARTICLE_DATA.map(() => ({
-      dist: new Animated.Value(0),
-      opacity: new Animated.Value(0),
-    }))
+    STARS.map(() => new RNAnimated.Value(Math.random() * 0.4 + 0.2))
   ).current;
 
   useEffect(() => {
     starOpacities.forEach((anim, i) => {
-      const dur = 700 + Math.random() * 1400;
-      const delay = STAR_DATA[i].d;
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: dur,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.08,
-            duration: dur * 1.3,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.75,
-            duration: dur * 0.8,
-            useNativeDriver: true,
-          }),
+      const dur = 900 + Math.random() * 1600;
+      const delay = STARS[i].d + 500;
+      RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.delay(delay),
+          RNAnimated.timing(anim, { toValue: 1, duration: dur, useNativeDriver: true }),
+          RNAnimated.timing(anim, { toValue: 0.06, duration: dur * 1.4, useNativeDriver: true }),
+          RNAnimated.timing(anim, { toValue: 0.7, duration: dur * 0.7, useNativeDriver: true }),
         ])
       ).start();
     });
 
-    Animated.sequence([
-      Animated.timing(bgOpacity, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
+    const T = Easing.out(Easing.cubic);
+    const TI = Easing.in(Easing.ease);
 
-      Animated.parallel([
-        Animated.timing(windowOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.spring(windowScale, {
-          toValue: 1,
-          friction: 7,
-          tension: 35,
-          useNativeDriver: true,
-        }),
-      ]),
+    bgOpacity.value = withTiming(1, { duration: 850, easing: T });
+    frameOpacity.value = withDelay(300, withTiming(1, { duration: 900, easing: T }));
+    moonOpacity.value = withDelay(700, withTiming(1, { duration: 1100, easing: T }));
 
-      Animated.delay(350),
+    cometOpacity.value = withDelay(1500, withTiming(1, { duration: 220, easing: T }));
+    trailOpacity.value = withDelay(1550, withTiming(1, { duration: 200, easing: T }));
+    cometTX.value = withDelay(1500, withTiming(0, { duration: 1050, easing: Easing.out(Easing.quad) }));
+    cometTY.value = withDelay(1500, withTiming(0, { duration: 1050, easing: Easing.out(Easing.quad) }));
 
-      Animated.parallel([
-        Animated.timing(cometOpacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cometTX, {
-          toValue: 0,
-          duration: 950,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cometTY, {
-          toValue: 0,
-          duration: 950,
-          useNativeDriver: true,
-        }),
-      ]),
+    cometOpacity.value = withDelay(2500, withTiming(0, { duration: 180, easing: TI }));
+    trailOpacity.value = withDelay(2500, withTiming(0, { duration: 180, easing: TI }));
 
-      Animated.parallel([
-        Animated.timing(cometOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cometScale, {
-          toValue: 2.5,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.sequence([
-          Animated.timing(burstOpacity, {
-            toValue: 1,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.parallel([
-            Animated.timing(burstScale, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(burstOpacity, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-        Animated.sequence([
-          Animated.delay(80),
-          Animated.parallel([
-            Animated.spring(logoScale, {
-              toValue: 1,
-              friction: 5,
-              tension: 55,
-              useNativeDriver: true,
-            }),
-            Animated.timing(logoOpacity, {
-              toValue: 1,
-              duration: 380,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ]),
+    burstOpacity.value = withDelay(
+      2600,
+      withSequence(
+        withTiming(1, { duration: 120 }),
+        withTiming(0, { duration: 550, easing: TI })
+      )
+    );
+    burstScale.value = withDelay(2600, withTiming(1, { duration: 670, easing: T }));
 
-      Animated.parallel([
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(logoGlowPulse, {
-              toValue: 1,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-            Animated.timing(logoGlowPulse, {
-              toValue: 0.35,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-          ]),
-          { iterations: 3 }
+    ringOpacity.value = withDelay(
+      2640,
+      withSequence(
+        withTiming(0.9, { duration: 150 }),
+        withTiming(0, { duration: 500, easing: TI })
+      )
+    );
+    ringScale.value = withDelay(2640, withTiming(1, { duration: 650, easing: T }));
+
+    logoOpacity.value = withDelay(2650, withTiming(1, { duration: 500, easing: T }));
+    logoScale.value = withDelay(2650, withSpring(1, { damping: 11, stiffness: 90, mass: 0.9 }));
+
+    glowPulse.value = withDelay(
+      3150,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 850, easing: Easing.inOut(Easing.sine) }),
+          withTiming(0.22, { duration: 850, easing: Easing.inOut(Easing.sine) })
         ),
-        Animated.sequence([
-          Animated.delay(150),
-          Animated.timing(textOpacity, {
-            toValue: 1,
-            duration: 700,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.delay(450),
-          Animated.timing(subtitleOpacity, {
-            toValue: 1,
-            duration: 700,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
+        3,
+        false
+      )
+    );
 
-      Animated.delay(800),
+    textOpacity.value = withDelay(3100, withTiming(1, { duration: 700, easing: T }));
+    textTransY.value = withDelay(3100, withTiming(0, { duration: 700, easing: T }));
 
-      Animated.timing(screenFade, {
-        toValue: 0,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onFinish();
-    });
+    subOpacity.value = withDelay(3500, withTiming(1, { duration: 650, easing: T }));
+    subTransY.value = withDelay(3500, withTiming(0, { duration: 650, easing: T }));
 
-    particleAnims.forEach((p) => {
-      Animated.sequence([
-        Animated.delay(2600),
-        Animated.parallel([
-          Animated.timing(p.opacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(p.dist, {
-            toValue: 1,
-            duration: 450,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.timing(p.opacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
+    screenOpacity.value = withDelay(
+      5200,
+      withTiming(0, { duration: 800, easing: TI }, (done) => {
+        if (done) runOnJS(onFinish)();
+      })
+    );
   }, []);
 
-  const SVG_W = 340;
-  const SVG_H = 540;
+  const bgStyle = useAnimatedStyle(() => ({ opacity: bgOpacity.value }));
+  const frameStyle = useAnimatedStyle(() => ({ opacity: frameOpacity.value }));
+  const moonStyle = useAnimatedStyle(() => ({ opacity: moonOpacity.value }));
+  const cometStyle = useAnimatedStyle(() => ({
+    opacity: cometOpacity.value,
+    transform: [{ translateX: cometTX.value }, { translateY: cometTY.value }],
+  }));
+  const trailStyle = useAnimatedStyle(() => ({
+    opacity: trailOpacity.value,
+    transform: [{ translateX: cometTX.value }, { translateY: cometTY.value }],
+  }));
+  const burstStyle = useAnimatedStyle(() => ({
+    opacity: burstOpacity.value,
+    transform: [{ scale: burstScale.value }],
+  }));
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: ringOpacity.value,
+    transform: [{ scale: ringScale.value }],
+  }));
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowPulse.value }));
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    transform: [{ translateY: textTransY.value }],
+  }));
+  const subStyle = useAnimatedStyle(() => ({
+    opacity: subOpacity.value,
+    transform: [{ translateY: subTransY.value }],
+  }));
+  const screenStyle = useAnimatedStyle(() => ({ opacity: screenOpacity.value }));
+
+  const VW = 360;
+  const VH = Math.round((H / W) * 360);
+
+  const PILLAR = 34;
+  const SILL = 62;
+  const ARCH_CY = 40;
+
+  const glassPillar = PILLAR + 2;
+  const glassSillY = VH - SILL - 2;
+
+  const glassPath = `M ${glassPillar} ${ARCH_CY + 100} Q ${glassPillar} ${ARCH_CY} ${VW / 2} ${ARCH_CY - 18} Q ${VW - glassPillar} ${ARCH_CY} ${VW - glassPillar} ${ARCH_CY + 100} L ${VW - glassPillar} ${glassSillY} L ${glassPillar} ${glassSillY} Z`;
+
+  const archMoldPath = `M ${PILLAR} ${ARCH_CY + 100} Q ${PILLAR} ${ARCH_CY} ${VW / 2} ${ARCH_CY - 18} Q ${VW - PILLAR} ${ARCH_CY} ${VW - PILLAR} ${ARCH_CY + 100}`;
+
+  const topMask = `M 0 0 L ${VW} 0 L ${VW} ${ARCH_CY + 100} Q ${VW - PILLAR} ${ARCH_CY} ${VW / 2} ${ARCH_CY - 18} Q ${PILLAR} ${ARCH_CY} ${PILLAR} ${ARCH_CY + 100} L 0 ${ARCH_CY + 100} Z`;
+
+  const moonCX = VW * 0.245;
+  const moonCY = VH * 0.175;
 
   return (
-    <Animated.View style={[styles.root, { opacity: screenFade }]}>
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]}>
+    <Animated.View style={[styles.root, screenStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFillObject, bgStyle]}>
         <LinearGradient
-          colors={["#010509", "#030C1A", "#020912", "#010408", "#000102"]}
+          colors={["#000205", "#010612", "#02091A", "#010510", "#000204"]}
           style={StyleSheet.absoluteFillObject}
-          start={{ x: 0.3, y: 0 }}
+          start={{ x: 0.35, y: 0 }}
           end={{ x: 0.6, y: 1 }}
         />
       </Animated.View>
 
-      {STAR_DATA.map((star, i) => (
-        <Animated.View
+      {STARS.map((star, i) => (
+        <RNAnimated.View
           key={i}
-          style={[
-            styles.star,
-            {
-              left: star.x * W,
-              top: star.y * H,
-              width: star.s,
-              height: star.s,
-              borderRadius: star.s / 2,
-              opacity: starOpacities[i],
-              shadowRadius: star.s * 1.5,
-            },
-          ]}
+          style={{
+            position: "absolute",
+            left: star.x * W - star.r,
+            top: star.y * H - star.r,
+            width: star.r * 2,
+            height: star.r * 2,
+            borderRadius: star.r,
+            backgroundColor: "#FFFFFF",
+            opacity: starOpacities[i],
+            shadowColor: "#FFFFFF",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.9,
+            shadowRadius: star.r * 2,
+          }}
         />
       ))}
 
-      <Animated.View
-        style={[
-          styles.windowWrap,
-          {
-            opacity: windowOpacity,
-            transform: [{ scale: windowScale }],
-            width: WINDOW_W,
-            height: WINDOW_H,
-            top: WINDOW_TOP,
-          },
-        ]}
-      >
-        <Svg
-          width={WINDOW_W}
-          height={WINDOW_H}
-          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        >
+      <Animated.View style={[StyleSheet.absoluteFillObject, frameStyle]}>
+        <Svg width={W} height={H} viewBox={`0 0 ${VW} ${VH}`}>
           <Defs>
-            <SvgLinearGradient id="goldH" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor="#5A3A00" />
-              <Stop offset="0.18" stopColor="#C8880A" />
-              <Stop offset="0.38" stopColor="#F0C030" />
-              <Stop offset="0.5" stopColor="#FFE066" />
-              <Stop offset="0.62" stopColor="#F0C030" />
-              <Stop offset="0.82" stopColor="#C8880A" />
-              <Stop offset="1" stopColor="#5A3A00" />
+            <SvgLinearGradient id="skyGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+              <Stop offset="0" stopColor="#010812" />
+              <Stop offset="0.3" stopColor="#020A1C" />
+              <Stop offset="0.65" stopColor="#030C20" />
+              <Stop offset="1" stopColor="#010810" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="goldV" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#FFE066" />
-              <Stop offset="0.4" stopColor="#D4A020" />
-              <Stop offset="1" stopColor="#7A5000" />
+
+            <SvgLinearGradient id="pillarL" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor="#040302" />
+              <Stop offset="0.25" stopColor="#100E0B" />
+              <Stop offset="0.55" stopColor="#1C1915" />
+              <Stop offset="0.78" stopColor="#151210" />
+              <Stop offset="1" stopColor="#080706" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="glassBg" x1="0.2" y1="0" x2="0.8" y2="1">
-              <Stop offset="0" stopColor="#040F22" stopOpacity="0.97" />
-              <Stop offset="0.5" stopColor="#061428" stopOpacity="0.98" />
-              <Stop offset="1" stopColor="#020A14" stopOpacity="0.99" />
+            <SvgLinearGradient id="pillarR" x1="1" y1="0" x2="0" y2="0">
+              <Stop offset="0" stopColor="#040302" />
+              <Stop offset="0.25" stopColor="#100E0B" />
+              <Stop offset="0.55" stopColor="#1C1915" />
+              <Stop offset="0.78" stopColor="#151210" />
+              <Stop offset="1" stopColor="#080706" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="sillGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#C8880A" />
-              <Stop offset="0.5" stopColor="#7A5000" />
-              <Stop offset="1" stopColor="#3A2000" />
+            <SvgLinearGradient id="topMaskGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+              <Stop offset="0" stopColor="#080704" />
+              <Stop offset="0.5" stopColor="#100E0A" />
+              <Stop offset="1" stopColor="#0D0B09" />
             </SvgLinearGradient>
-            <SvgRadialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFFDE0" stopOpacity="0.5" />
-              <Stop offset="0.5" stopColor="#FFF8A0" stopOpacity="0.2" />
-              <Stop offset="1" stopColor="#FFE060" stopOpacity="0" />
+            <SvgLinearGradient id="sillGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+              <Stop offset="0" stopColor="#1A1714" />
+              <Stop offset="0.3" stopColor="#0E0C0A" />
+              <Stop offset="1" stopColor="#060504" />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="goldTrimH" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor="#3A2E1A" stopOpacity="0" />
+              <Stop offset="0.15" stopColor="#6A5530" stopOpacity="0.7" />
+              <Stop offset="0.5" stopColor="#907040" stopOpacity="0.9" />
+              <Stop offset="0.85" stopColor="#6A5530" stopOpacity="0.7" />
+              <Stop offset="1" stopColor="#3A2E1A" stopOpacity="0" />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="innerGlowL" x1="1" y1="0" x2="0" y2="0">
+              <Stop offset="0" stopColor="#4A3C22" stopOpacity="0.35" />
+              <Stop offset="1" stopColor="#2A2010" stopOpacity="0" />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="innerGlowR" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor="#4A3C22" stopOpacity="0.35" />
+              <Stop offset="1" stopColor="#2A2010" stopOpacity="0" />
+            </SvgLinearGradient>
+            <SvgRadialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#F8EDD0" stopOpacity="0.45" />
+              <Stop offset="0.45" stopColor="#EEDD90" stopOpacity="0.18" />
+              <Stop offset="0.75" stopColor="#D0B860" stopOpacity="0.07" />
+              <Stop offset="1" stopColor="#B09040" stopOpacity="0" />
             </SvgRadialGradient>
-            <SvgRadialGradient id="nebulaL" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#1A3A6A" stopOpacity="0.35" />
-              <Stop offset="1" stopColor="#0A1A3A" stopOpacity="0" />
+            <SvgRadialGradient id="nebulaA" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#142850" stopOpacity="0.22" />
+              <Stop offset="1" stopColor="#0A1830" stopOpacity="0" />
             </SvgRadialGradient>
-            <SvgRadialGradient id="nebulaR" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#2A1A5A" stopOpacity="0.3" />
-              <Stop offset="1" stopColor="#100820" stopOpacity="0" />
+            <SvgRadialGradient id="nebulaB" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#281440" stopOpacity="0.18" />
+              <Stop offset="1" stopColor="#14082A" stopOpacity="0" />
             </SvgRadialGradient>
-            <SvgLinearGradient id="glassSheen" x1="0" y1="0" x2="0.6" y2="1">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.04" />
-              <Stop offset="0.4" stopColor="#FFFFFF" stopOpacity="0.01" />
-              <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+            <SvgLinearGradient id="archInnerGlow" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#7A6035" stopOpacity="0.5" />
+              <Stop offset="1" stopColor="#5A4525" stopOpacity="0.15" />
             </SvgLinearGradient>
+            <SvgLinearGradient id="sillTopGlow" x1="0" y1="1" x2="0" y2="0">
+              <Stop offset="0" stopColor="#7A6035" stopOpacity="0" />
+              <Stop offset="1" stopColor="#907040" stopOpacity="0.45" />
+            </SvgLinearGradient>
+            <SvgRadialGradient id="keystoneGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#C0A060" stopOpacity="0.6" />
+              <Stop offset="1" stopColor="#806030" stopOpacity="0" />
+            </SvgRadialGradient>
           </Defs>
 
-          <Path
-            d="M 28 200 Q 28 18 170 12 Q 312 18 312 200 L 312 518 L 28 518 Z"
-            fill="url(#glassBg)"
-          />
+          <Path d={glassPath} fill="url(#skyGrad)" />
 
-          <Ellipse cx="90" cy="280" rx="65" ry="90" fill="url(#nebulaL)" />
-          <Ellipse cx="250" cy="200" rx="55" ry="75" fill="url(#nebulaR)" />
-
-          <Circle cx="68" cy="95" r="32" fill="url(#moonHalo)" />
-          <Circle cx="68" cy="95" r="19" fill="#FFFCE8" />
-          <Circle cx="76" cy="88" r="15.5" fill="#061428" />
+          <Ellipse cx={VW * 0.3} cy={VH * 0.28} rx={80} ry={110} fill="url(#nebulaA)" />
+          <Ellipse cx={VW * 0.72} cy={VH * 0.22} rx={70} ry={90} fill="url(#nebulaB)" />
+          <Ellipse cx={VW * 0.55} cy={VH * 0.55} rx={100} ry={65} fill="url(#nebulaA)" />
 
           {[
-            [218, 50, 2.2],
-            [258, 72, 1.5],
-            [244, 118, 2.7],
-            [283, 62, 1.5],
-            [196, 88, 1.5],
-            [272, 138, 2],
-            [210, 162, 1.5],
-            [294, 105, 1],
-            [232, 198, 1.5],
-            [182, 132, 1],
-            [88, 155, 1.5],
-            [118, 182, 2],
-            [58, 200, 1.5],
-            [100, 238, 1],
-            [128, 128, 1.5],
-            [155, 58, 2],
-            [175, 190, 1.5],
-            [295, 175, 1.8],
-            [50, 260, 1.2],
-            [140, 225, 1.5],
-            [265, 220, 1],
-            [80, 310, 1],
-            [145, 340, 1.5],
-            [230, 300, 1.2],
-            [295, 340, 1],
-            [60, 380, 1.2],
-            [185, 370, 1.5],
-            [260, 380, 1],
+            [VW * 0.32, VH * 0.08, 2.4],
+            [VW * 0.51, VH * 0.05, 1.5],
+            [VW * 0.68, VH * 0.09, 2.0],
+            [VW * 0.79, VH * 0.06, 1.5],
+            [VW * 0.18, VH * 0.14, 1.7],
+            [VW * 0.43, VH * 0.12, 2.6],
+            [VW * 0.60, VH * 0.15, 1.4],
+            [VW * 0.75, VH * 0.18, 2.2],
+            [VW * 0.22, VH * 0.22, 1.5],
+            [VW * 0.50, VH * 0.20, 1.8],
+            [VW * 0.72, VH * 0.26, 1.5],
+            [VW * 0.35, VH * 0.30, 2.0],
+            [VW * 0.62, VH * 0.32, 1.6],
+            [VW * 0.82, VH * 0.28, 1.4],
+            [VW * 0.28, VH * 0.37, 1.5],
+            [VW * 0.55, VH * 0.38, 2.2],
+            [VW * 0.78, VH * 0.38, 1.6],
+            [VW * 0.12, VH * 0.50, 1.4],
+            [VW * 0.40, VH * 0.48, 1.8],
+            [VW * 0.65, VH * 0.52, 1.5],
+            [VW * 0.88, VH * 0.47, 1.6],
           ].map(([cx, cy, r], i) => (
-            <Circle key={i} cx={cx} cy={cy} r={r} fill="white" opacity={0.55 + Math.random() * 0.4} />
-          ))}
-
-          {[
-            [110, 65, 3.5],
-            [155, 42, 2.5],
-            [190, 72, 3],
-            [132, 108, 2],
-            [288, 88, 2],
-          ].map(([cx, cy, r], i) => (
-            <G key={`bright-${i}`}>
-              <Circle cx={cx} cy={cy} r={r * 2.5} fill="white" opacity={0.08} />
-              <Circle cx={cx} cy={cy} r={r} fill="white" opacity={0.92} />
+            <G key={`s${i}`}>
+              {(r as number) > 1.8 && (
+                <Circle cx={cx as number} cy={cy as number} r={(r as number) * 2.8} fill="white" opacity={0.07} />
+              )}
+              <Circle cx={cx as number} cy={cy as number} r={r as number} fill="white" opacity={0.75 + Math.random() * 0.22} />
             </G>
           ))}
 
-          <Path
-            d="M 28 200 Q 28 18 170 12 Q 312 18 312 200 L 312 518 L 28 518 Z"
-            fill="url(#glassSheen)"
-          />
+          <Circle cx={moonCX} cy={moonCY} r={55} fill="url(#moonGlow)" />
+          <Circle cx={moonCX} cy={moonCY} r={24} fill="#F6F1E8" />
+          <Circle cx={moonCX + 8} cy={moonCY - 7} r={20} fill="#020A1C" />
+          <Circle cx={moonCX - 1} cy={moonCY + 2} r={3.5} fill="#F6F1E8" opacity={0.18} />
+
+          <Rect x={0} y={0} width={PILLAR} height={VH} fill="url(#pillarL)" />
+          <Rect x={VW - PILLAR} y={0} width={PILLAR} height={VH} fill="url(#pillarR)" />
+          <Rect x={0} y={VH - SILL} width={VW} height={SILL} fill="url(#sillGrad)" />
+          <Path d={topMask} fill="url(#topMaskGrad)" />
+
+          <Rect x={PILLAR} y={VH - SILL} width={VW - PILLAR * 2} height={8} fill="url(#sillTopGlow)" />
+
+          <Rect x={PILLAR - 6} y={ARCH_CY + 90} width={6} height={VH - SILL - ARCH_CY - 90} fill="url(#innerGlowL)" />
+          <Rect x={VW - PILLAR} y={ARCH_CY + 90} width={6} height={VH - SILL - ARCH_CY - 90} fill="url(#innerGlowR)" />
 
           <Path
-            d="M 10 208 Q 10 5 170 0 Q 330 5 330 208 L 330 530 L 10 530 Z"
+            d={archMoldPath}
             fill="none"
-            stroke="url(#goldH)"
-            strokeWidth="22"
+            stroke="url(#goldTrimH)"
+            strokeWidth={3.5}
+            strokeLinecap="round"
           />
-
           <Path
-            d="M 20 210 Q 20 12 170 7 Q 320 12 320 210"
+            d={`M ${PILLAR + 5} ${ARCH_CY + 102} Q ${PILLAR + 5} ${ARCH_CY + 8} ${VW / 2} ${ARCH_CY - 8} Q ${VW - PILLAR - 5} ${ARCH_CY + 8} ${VW - PILLAR - 5} ${ARCH_CY + 102}`}
             fill="none"
-            stroke="url(#goldV)"
-            strokeWidth="6"
+            stroke="#7A6030"
+            strokeWidth={1.5}
+            strokeOpacity={0.3}
+            strokeLinecap="round"
           />
+
+          <Circle cx={VW / 2} cy={ARCH_CY - 14} r={14} fill="url(#topMaskGrad)" />
+          <Circle cx={VW / 2} cy={ARCH_CY - 14} r={9} fill="url(#keystoneGlow)" />
+          <Circle cx={VW / 2} cy={ARCH_CY - 14} r={5} fill="#C0A060" opacity={0.7} />
+          <Circle cx={VW / 2} cy={ARCH_CY - 14} r={2.5} fill="#E8D090" opacity={0.85} />
+
+          <Rect x={0} y={VH - SILL - 2} width={VW} height={3} fill="url(#goldTrimH)" opacity={0.9} />
+
+          <Rect x={PILLAR - 2} y={ARCH_CY + 80} width={2} height={VH - SILL - ARCH_CY - 80} fill="#7A6030" opacity={0.5} />
+          <Rect x={VW - PILLAR} y={ARCH_CY + 80} width={2} height={VH - SILL - ARCH_CY - 80} fill="#7A6030" opacity={0.5} />
+
+          <Path d={`M ${PILLAR} ${VH - SILL - 2} L ${PILLAR} ${VH - SILL + 14}`} stroke="#5A4520" strokeWidth={1} strokeOpacity={0.6} />
+          <Path d={`M ${VW - PILLAR} ${VH - SILL - 2} L ${VW - PILLAR} ${VH - SILL + 14}`} stroke="#5A4520" strokeWidth={1} strokeOpacity={0.6} />
+
+          <Rect x={0} y={0} width={VW} height={4} fill="url(#goldTrimH)" opacity={0.3} />
+
           <Path
-            d="M 32 215 Q 32 22 170 17 Q 308 22 308 215"
+            d={`M 0 ${ARCH_CY + 100} Q 0 ${ARCH_CY - 4} ${PILLAR / 2} ${ARCH_CY - 10}`}
             fill="none"
-            stroke="#FFE066"
-            strokeWidth="2"
-            strokeOpacity="0.35"
+            stroke="#5A4520"
+            strokeWidth={1}
+            strokeOpacity={0.4}
           />
-
           <Path
-            d="M 10 208 L 10 530 L 330 530 L 330 208"
+            d={`M ${VW} ${ARCH_CY + 100} Q ${VW} ${ARCH_CY - 4} ${VW - PILLAR / 2} ${ARCH_CY - 10}`}
             fill="none"
-            stroke="url(#goldH)"
-            strokeWidth="22"
+            stroke="#5A4520"
+            strokeWidth={1}
+            strokeOpacity={0.4}
           />
-
-          <Rect x="159" y="200" width="22" height="328" fill="url(#goldV)" rx="3" />
-          <Rect x="10" y="328" width="320" height="20" fill="url(#goldH)" />
-
-          <Path
-            d="M 155 3 Q 170 -10 185 3 L 188 28 L 152 28 Z"
-            fill="url(#goldV)"
-          />
-          <Circle cx="170" cy="0" r="10" fill="#FFE066" />
-          <Circle cx="170" cy="0" r="5" fill="url(#goldV)" />
-
-          <Circle cx="72" cy="338" r="13" fill="url(#goldV)" />
-          <Circle cx="72" cy="338" r="8" fill="#C8880A" />
-          <Circle cx="72" cy="338" r="4" fill="#FFE066" />
-          <Circle cx="268" cy="338" r="13" fill="url(#goldV)" />
-          <Circle cx="268" cy="338" r="8" fill="#C8880A" />
-          <Circle cx="268" cy="338" r="4" fill="#FFE066" />
-
-          <Circle cx="32" cy="215" r="7" fill="url(#goldV)" />
-          <Circle cx="308" cy="215" r="7" fill="url(#goldV)" />
-
-          <Path d="M 52 255 Q 60 242 68 255" fill="none" stroke="#FFE066" strokeWidth="2" strokeOpacity="0.4" />
-          <Path d="M 272 255 Q 280 242 288 255" fill="none" stroke="#FFE066" strokeWidth="2" strokeOpacity="0.4" />
-
-          <Rect x="0" y="522" width="340" height="18" rx="5" fill="url(#goldH)" />
-          <Rect x="-5" y="537" width="350" height="8" rx="3" fill="#7A5000" />
-
-          <Rect x="155" y="322" width="30" height="14" rx="4" fill="#C8880A" />
-          <Rect x="162" y="318" width="16" height="22" rx="3" fill="#D4A020" />
         </Svg>
       </Animated.View>
 
-      {PARTICLE_DATA.map((p, i) => {
-        const rad = (p.angle * Math.PI) / 180;
-        const tx = particleAnims[i].dist.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, Math.cos(rad) * p.dist],
-        });
-        const ty = particleAnims[i].dist.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, Math.sin(rad) * p.dist],
-        });
-        return (
-          <Animated.View
-            key={`part-${i}`}
-            style={[
-              styles.particle,
-              {
-                left: W * 0.5,
-                top: LOGO_CENTER_Y + LOGO_SIZE / 2,
-                opacity: particleAnims[i].opacity,
-                transform: [{ translateX: tx }, { translateY: ty }],
-              },
-            ]}
-          />
-        );
-      })}
+      <Animated.View style={[StyleSheet.absoluteFillObject, moonStyle]} pointerEvents="none" />
 
       <Animated.View
         style={[
-          styles.cometWrap,
+          styles.trail,
+          trailStyle,
           {
-            left: W * 0.5 - 30,
-            top: LOGO_CENTER_Y + LOGO_SIZE / 2 - 30,
-            opacity: cometOpacity,
-            transform: [
-              { translateX: cometTX },
-              { translateY: cometTY },
-              { scale: cometScale },
-            ],
+            left: LOGO_CX - 4,
+            top: LOGO_CY - 4,
           },
         ]}
       >
-        <Svg width={60} height={60} viewBox="0 0 60 60">
+        <Svg width={W * 0.6} height={H * 0.48} viewBox={`0 0 ${W * 0.6} ${H * 0.48}`}>
           <Defs>
-            <SvgRadialGradient id="cometCore" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="1" />
-              <Stop offset="0.3" stopColor="#CCE8FF" stopOpacity="0.9" />
-              <Stop offset="0.65" stopColor="#6699FF" stopOpacity="0.5" />
-              <Stop offset="1" stopColor="#2244CC" stopOpacity="0" />
-            </SvgRadialGradient>
+            <SvgLinearGradient id="trailGrad" x1="1" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <Stop offset="0.25" stopColor="#C8EAFF" stopOpacity="0.7" />
+              <Stop offset="0.6" stopColor="#6AA8FF" stopOpacity="0.35" />
+              <Stop offset="1" stopColor="#2255CC" stopOpacity="0" />
+            </SvgLinearGradient>
           </Defs>
-          <Circle cx="30" cy="30" r="30" fill="url(#cometCore)" />
-          <Circle cx="30" cy="30" r="9" fill="white" />
-          <Circle cx="30" cy="30" r="5" fill="#E8F4FF" />
+          <Path
+            d={`M 8 8 L ${W * 0.6} 0 L ${W * 0.6} ${H * 0.04} Z`}
+            fill="url(#trailGrad)"
+          />
+          <Path
+            d={`M 8 8 L ${W * 0.52} ${H * 0.48}`}
+            stroke="url(#trailGrad)"
+            strokeWidth={1.5}
+            strokeOpacity={0.25}
+          />
         </Svg>
       </Animated.View>
 
       <Animated.View
         style={[
-          styles.burstWrap,
+          styles.comet,
+          cometStyle,
+          { left: LOGO_CX - 18, top: LOGO_CY - 18 },
+        ]}
+      >
+        <Svg width={36} height={36} viewBox="0 0 36 36">
+          <Defs>
+            <SvgRadialGradient id="cometGrad" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="1" />
+              <Stop offset="0.28" stopColor="#D0EEFF" stopOpacity="0.9" />
+              <Stop offset="0.58" stopColor="#80AAFF" stopOpacity="0.55" />
+              <Stop offset="1" stopColor="#3366DD" stopOpacity="0" />
+            </SvgRadialGradient>
+          </Defs>
+          <Circle cx={18} cy={18} r={18} fill="url(#cometGrad)" />
+          <Circle cx={18} cy={18} r={7} fill="white" />
+          <Circle cx={18} cy={18} r={3.5} fill="#EEF8FF" />
+        </Svg>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.burst,
+          burstStyle,
           {
-            left: W * 0.5 - 110,
-            top: LOGO_CENTER_Y + LOGO_SIZE / 2 - 110,
-            opacity: burstOpacity,
-            transform: [{ scale: burstScale }],
+            left: LOGO_CX - 140,
+            top: LOGO_CY - 140,
+          },
+        ]}
+      >
+        <Svg width={280} height={280} viewBox="0 0 280 280">
+          <Defs>
+            <SvgRadialGradient id="burstG" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.92" />
+              <Stop offset="0.22" stopColor="#C8E8FF" stopOpacity="0.65" />
+              <Stop offset="0.5" stopColor="#5588FF" stopOpacity="0.28" />
+              <Stop offset="0.78" stopColor="#2244BB" stopOpacity="0.1" />
+              <Stop offset="1" stopColor="#1133AA" stopOpacity="0" />
+            </SvgRadialGradient>
+          </Defs>
+          <Circle cx={140} cy={140} r={140} fill="url(#burstG)" />
+        </Svg>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.ring,
+          ringStyle,
+          {
+            left: LOGO_CX - 110,
+            top: LOGO_CY - 110,
           },
         ]}
       >
         <Svg width={220} height={220} viewBox="0 0 220 220">
           <Defs>
-            <SvgRadialGradient id="burstGrad" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
-              <Stop offset="0.3" stopColor="#AACCFF" stopOpacity="0.6" />
-              <Stop offset="0.65" stopColor="#4466FF" stopOpacity="0.25" />
-              <Stop offset="1" stopColor="#2233AA" stopOpacity="0" />
+            <SvgRadialGradient id="ringG" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
+              <Stop offset="0.68" stopColor="#88BBFF" stopOpacity="0.45" />
+              <Stop offset="0.82" stopColor="#4488FF" stopOpacity="0.65" />
+              <Stop offset="0.92" stopColor="#2255CC" stopOpacity="0.3" />
+              <Stop offset="1" stopColor="#1133AA" stopOpacity="0" />
             </SvgRadialGradient>
           </Defs>
-          <Circle cx="110" cy="110" r="110" fill="url(#burstGrad)" />
+          <Circle cx={110} cy={110} r={110} fill="url(#ringG)" />
         </Svg>
       </Animated.View>
 
       <Animated.View
         style={[
-          styles.logoGlowRing,
+          styles.glow,
+          glowStyle,
           {
-            left: LOGO_CENTER_X - 28,
-            top: LOGO_CENTER_Y - 28,
-            opacity: logoGlowPulse,
+            left: LOGO_CX - 90,
+            top: LOGO_CY - 90,
           },
         ]}
       >
-        <Svg width={LOGO_SIZE + 56} height={LOGO_SIZE + 56} viewBox="0 0 186 186">
+        <Svg width={180} height={180} viewBox="0 0 180 180">
           <Defs>
-            <SvgRadialGradient id="glowRing" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#AADDFF" stopOpacity="0" />
-              <Stop offset="0.55" stopColor="#88CCFF" stopOpacity="0.55" />
-              <Stop offset="0.78" stopColor="#4499FF" stopOpacity="0.3" />
-              <Stop offset="1" stopColor="#2266CC" stopOpacity="0" />
+            <SvgRadialGradient id="glowG" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#AADDFF" stopOpacity="0.1" />
+              <Stop offset="0.45" stopColor="#66AAFF" stopOpacity="0.5" />
+              <Stop offset="0.7" stopColor="#4488EE" stopOpacity="0.28" />
+              <Stop offset="1" stopColor="#2244CC" stopOpacity="0" />
             </SvgRadialGradient>
           </Defs>
-          <Circle cx="93" cy="93" r="93" fill="url(#glowRing)" />
+          <Circle cx={90} cy={90} r={90} fill="url(#glowG)" />
         </Svg>
       </Animated.View>
 
       <Animated.View
         style={[
-          styles.logoContainer,
+          styles.logo,
+          logoStyle,
           {
-            left: LOGO_CENTER_X,
-            top: LOGO_CENTER_Y,
-            opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
+            left: LOGO_CX - LOGO_SIZE / 2,
+            top: LOGO_CY - LOGO_SIZE / 2,
+            width: LOGO_SIZE,
+            height: LOGO_SIZE,
           },
         ]}
       >
         <Image
           source={require("../assets/images/icon.png")}
-          style={styles.logo}
+          style={{ width: LOGO_SIZE, height: LOGO_SIZE }}
           resizeMode="contain"
         />
       </Animated.View>
 
-      <Animated.Text style={[styles.appName, { opacity: textOpacity, top: LOGO_CENTER_Y + LOGO_SIZE + 18 }]}>
+      <Animated.Text
+        style={[
+          styles.appName,
+          textStyle,
+          { top: LOGO_CY + LOGO_SIZE / 2 + 24 },
+        ]}
+      >
         StreekX
       </Animated.Text>
 
-      <Animated.Text style={[styles.tagline, { opacity: subtitleOpacity, top: LOGO_CENTER_Y + LOGO_SIZE + 60 }]}>
+      <Animated.Text
+        style={[
+          styles.tagline,
+          subStyle,
+          { top: LOGO_CY + LOGO_SIZE / 2 + 70 },
+        ]}
+      >
         Search the universe
       </Animated.Text>
     </Animated.View>
@@ -638,70 +611,45 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
   },
-  windowWrap: {
-    position: "absolute",
-    alignSelf: "center",
-  },
-  star: {
-    position: "absolute",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#FFFFFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    elevation: 2,
-  },
-  cometWrap: {
+  trail: {
     position: "absolute",
   },
-  burstWrap: {
+  comet: {
     position: "absolute",
   },
-  logoGlowRing: {
+  burst: {
     position: "absolute",
   },
-  logoContainer: {
+  ring: {
     position: "absolute",
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
+  },
+  glow: {
+    position: "absolute",
   },
   logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-  },
-  particle: {
     position: "absolute",
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#AADDFF",
-    shadowColor: "#88BBFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
   },
   appName: {
     position: "absolute",
-    alignSelf: "center",
     width: "100%",
     textAlign: "center",
-    color: "#FFFFFF",
-    fontSize: 36,
+    color: "#EEEEFF",
+    fontSize: 38,
     fontWeight: "700",
-    letterSpacing: 5,
+    letterSpacing: 6,
     fontFamily: "Inter_700Bold",
-    textShadowColor: "#88CCFF",
+    textShadowColor: "#6699FF",
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
+    textShadowRadius: 22,
   },
   tagline: {
     position: "absolute",
-    alignSelf: "center",
     width: "100%",
     textAlign: "center",
-    color: "#8BBCEE",
-    fontSize: 14,
+    color: "#7A9ACC",
+    fontSize: 13.5,
     fontWeight: "400",
-    letterSpacing: 3.5,
+    letterSpacing: 4,
     fontFamily: "Inter_400Regular",
   },
 });
