@@ -1,15 +1,18 @@
 const { getDefaultConfig } = require("expo/metro-config");
-const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
-config.watchFolders = [__dirname];
+const existingBlockList = Array.isArray(config.resolver?.blockList)
+  ? config.resolver.blockList
+  : config.resolver?.blockList
+  ? [config.resolver.blockList]
+  : [];
 
 config.resolver = {
   ...config.resolver,
   blockList: [
+    ...existingBlockList,
     /\.local\/.*/,
-    /node_modules\/.*\/node_modules\/.*/,
   ],
 };
 
