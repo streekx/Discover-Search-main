@@ -29,7 +29,7 @@ export default function DynamicDiscoverTile() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgErr, setImgErr] = useState(false);
   const [backImgErr, setBackImgErr] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {

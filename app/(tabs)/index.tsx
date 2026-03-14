@@ -440,7 +440,7 @@ export default function HomeScreen() {
       <View style={styles.aiShortcuts}>
         <TouchableOpacity style={styles.aiShortcut} onPress={handleAiMode} activeOpacity={0.8}>
           <View style={styles.aiIconWrapper}>
-            <MaterialCommunityIcons name="sparkles" size={18} color={C.tint} />
+            <MaterialCommunityIcons name="creation" size={18} color={C.tint} />
           </View>
           <Text style={styles.aiShortcutText}>AI Mode</Text>
         </TouchableOpacity>

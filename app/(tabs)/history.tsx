@@ -30,7 +30,7 @@ export default function HistoryScreen() {
 
   function handleSearch(item: HistoryItem) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    search(item.query, item.filter);
+    search(item.query, item.filter as SearchFilter | undefined);
     router.push({ pathname: "/search", params: { q: item.query, filter: item.filter } });
   }
 
@@ -143,7 +143,7 @@ export default function HistoryScreen() {
               <View style={styles.historyContent}>
                 <Text style={styles.historyQuery} numberOfLines={1}>{item.query}</Text>
                 <View style={styles.historyMeta}>
-                  <Text style={styles.historyFilter}>{FILTER_LABELS[item.filter] || "All"}</Text>
+                  <Text style={styles.historyFilter}>{FILTER_LABELS[item.filter as SearchFilter] ?? "All"}</Text>
                   <Text style={styles.historyTime}>{formatTime(item.timestamp)}</Text>
                 </View>
               </View>
