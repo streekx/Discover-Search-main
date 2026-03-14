@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
   },
   backLayer: {
     bottom: -4, right: -4,
-    backgroundColor: "rgba(162,210,255,0.25)",
-    borderWidth: 1, borderColor: "rgba(162,210,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
     transform: [{ rotate: "4deg" }],
   },
   frontLayer: {
