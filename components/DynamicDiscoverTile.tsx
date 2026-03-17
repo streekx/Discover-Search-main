@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 
-const PLACEHOLDER_IMAGE = require("@/assets/images/icon.png");
+const PLACEHOLDER_IMAGE = require("@/assets/images/logo.jpg");
 
 const FALLBACK_IMAGES = [
   "https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=1",

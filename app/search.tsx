@@ -18,7 +18,7 @@ import { useSearch, SearchFilter, SearchResult } from "@/context/SearchContext";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import GalaxyBackground from "@/components/GalaxyBackground";
 
-const PLACEHOLDER_IMAGE = require("@/assets/images/icon.png");
+const PLACEHOLDER_IMAGE = require("@/assets/images/logo.jpg");
 
 const isValidImageUrl = (url: string | null | undefined): boolean => {
   if (!url || typeof url !== "string") return false;

@@ -12,13 +12,12 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { SearchProvider } from "@/context/SearchContext";
-import AnimatedSplashScreen from "@/components/AnimatedSplashScreen";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -46,13 +45,9 @@ export default function RootLayout() {
     Caveat_700Bold,
   });
 
-  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
-  const [appReady, setAppReady] = useState(false);
-
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
-      setAppReady(true);
     }
   }, [fontsLoaded, fontError]);
 
@@ -65,11 +60,6 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <RootLayoutNav />
-              {appReady && showAnimatedSplash && (
-                <AnimatedSplashScreen
-                  onFinish={() => setShowAnimatedSplash(false)}
-                />
-              )}
             </KeyboardProvider>
           </GestureHandlerRootView>
         </SearchProvider>

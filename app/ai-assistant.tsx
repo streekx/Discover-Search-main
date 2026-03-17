@@ -1,506 +1,566 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions,
-  PanResponder, Platform, ActivityIndicator
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Dimensions,
+  Animated, StatusBar, Linking, Alert, ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import * as Speech from "expo-speech";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { LinearGradient } from "expo-linear-gradient";
-import Colors from "@/constants/colors";
-import { useSearch } from "@/context/SearchContext";
 
-const { width, height } = Dimensions.get("window");
+const { width: W } = Dimensions.get("window");
 const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
+const LOGO = require("@/assets/images/logo.jpg");
 
-interface Particle {
+type FocusMode = { key: string; label: string; icon: string; color: string };
+const FOCUS_MODES: FocusMode[] = [
+  { key: "web",      label: "Web",      icon: "globe-outline",         color: "#6EB4FF" },
+  { key: "academic", label: "Academic", icon: "school-outline",        color: "#A78BFA" },
+  { key: "writing",  label: "Writing",  icon: "create-outline",        color: "#34D399" },
+  { key: "creative", label: "Creative", icon: "color-palette-outline", color: "#F59E0B" },
+  { key: "video",    label: "Video",    icon: "videocam-outline",      color: "#EF4444" },
+  { key: "math",     label: "Math",     icon: "calculator-outline",    color: "#06B6D4" },
+];
+
+type Source = { title: string; url: string; snippet?: string };
+type Message = {
   id: string;
-  x: Animated.Value;
-  y: Animated.Value;
-  opacity: Animated.Value;
+  role: "user" | "assistant";
+  content: string;
+  sources?: Source[];
+  image?: string;
+  loading?: boolean;
+  focusMode?: string;
+  timestamp: number;
+};
+
+function getDomain(url: string) {
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
 }
 
-function getDomain(url: string): string {
-  try { return new URL(url).hostname.replace("www.", ""); } catch { return ""; }
-}
-
-function ParticleOrb({ isActive, onParticleScatter }: { isActive: boolean; onParticleScatter: (x: number, y: number) => void }) {
-  const pulse1 = useRef(new Animated.Value(1)).current;
-  const pulse2 = useRef(new Animated.Value(1)).current;
-  const pulse3 = useRef(new Animated.Value(1)).current;
-  const rotate = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    if (isActive) {
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulse1, { toValue: 1.25, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse1, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])).start();
-      Animated.loop(Animated.sequence([
-        Animated.delay(267),
-        Animated.timing(pulse2, { toValue: 1.35, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse2, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])).start();
-      Animated.loop(Animated.sequence([
-        Animated.delay(534),
-        Animated.timing(pulse3, { toValue: 1.2, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse3, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])).start();
-      Animated.loop(
-        Animated.timing(rotate, { toValue: 1, duration: 3000, useNativeDriver: true })
-      ).start();
-      Animated.loop(Animated.sequence([
-        Animated.timing(glow, { toValue: 0.8, duration: 1000, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
-      ])).start();
-    } else {
-      pulse1.stopAnimation(); pulse2.stopAnimation(); pulse3.stopAnimation();
-      rotate.stopAnimation(); glow.stopAnimation();
-      pulse1.setValue(1); pulse2.setValue(1); pulse3.setValue(1); glow.setValue(0.3);
-    }
-  }, [isActive]);
-
-  const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
-
+function GalaxyBg() {
   return (
-    <TouchableOpacity
-      style={styles.orbContainer}
-      activeOpacity={0.9}
-      onPress={(e) => {
-        const { locationX, locationY } = e.nativeEvent;
-        onParticleScatter(locationX, locationY);
-      }}
-    >
-      <Animated.View style={[styles.ring3, { transform: [{ scale: pulse3 }], opacity: glow }]} />
-      <Animated.View style={[styles.ring2, { transform: [{ scale: pulse2 }] }]} />
-      <Animated.View style={[styles.ring1, { transform: [{ scale: pulse1 }] }]}>
-        <Animated.View style={{ transform: [{ rotate: spin }], borderRadius: 80, overflow: "hidden", width: "100%", height: "100%" }}>
-          <LinearGradient
-            colors={isActive ? ["#1E6FD9", "#0EA5E9", "#A2D2FF", "#1E6FD9"] : ["#E2E8F0", "#CBD5E1"]}
-            style={styles.grad}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          />
-        </Animated.View>
-        <Ionicons
-          name={isActive ? "volume-high" : "mic-outline"}
-          size={48}
-          color="#FFF"
-          style={styles.orbIcon}
-        />
-      </Animated.View>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient
+        colors={["#020205", "#030309", "#020204"]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+      />
+      <LinearGradient
+        colors={["transparent", "rgba(10,8,18,0.5)", "#030208"]}
+        style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 200 }}
+        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+      />
+    </View>
+  );
+}
+
+function SourceCard({ source }: { source: Source }) {
+  const domain = getDomain(source.url);
+  return (
+    <TouchableOpacity style={ss.sourceCard} onPress={() => Linking.openURL(source.url)} activeOpacity={0.8}>
+      <Image source={{ uri: `https://www.google.com/s2/favicons?domain=${domain}&sz=32` }} style={ss.sourceFavicon} />
+      <View style={ss.sourceInfo}>
+        <Text style={ss.sourceTitle} numberOfLines={1}>{source.title}</Text>
+        <Text style={ss.sourceDomain} numberOfLines={1}>{domain}</Text>
+      </View>
+      <Ionicons name="open-outline" size={14} color="rgba(255,255,255,0.4)" />
     </TouchableOpacity>
   );
 }
 
-const orbStyles = StyleSheet.create({
-  container: { width: 200, height: 200, alignItems: "center", justifyContent: "center" },
-  ring3: {
-    position: "absolute",
-    width: 200, height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(162,210,255,0.15)",
-  },
-  ring2: {
-    position: "absolute",
-    width: 164, height: 164,
-    borderRadius: 82,
-    backgroundColor: "rgba(162,210,255,0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(162,210,255,0.4)",
-  },
-  ring1: {
-    width: 136, height: 136,
-    borderRadius: 68,
-    overflow: "hidden",
-    alignItems: "center", justifyContent: "center",
-    shadowColor: Colors.light.tint,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  grad: { ...StyleSheet.absoluteFillObject },
-  icon: { position: "absolute", fontSize: 64 },
-});
+function MessageBubble({ msg }: { msg: Message }) {
+  const isUser = msg.role === "user";
 
-export default function AIAssistantScreen() {
+  if (msg.loading) {
+    const dot1 = useRef(new Animated.Value(0.3)).current;
+    const dot2 = useRef(new Animated.Value(0.3)).current;
+    const dot3 = useRef(new Animated.Value(0.3)).current;
+    useEffect(() => {
+      const makeAnim = (val: Animated.Value, delay: number) =>
+        Animated.loop(Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        ]));
+      const a1 = makeAnim(dot1, 0);
+      const a2 = makeAnim(dot2, 180);
+      const a3 = makeAnim(dot3, 360);
+      a1.start(); a2.start(); a3.start();
+      return () => { a1.stop(); a2.stop(); a3.stop(); };
+    }, []);
+    return (
+      <View style={[ss.msgWrap, ss.assistantWrap]}>
+        <View style={ss.thinkingBubble}>
+          <View style={ss.assistantHeader}>
+            <Image source={LOGO} style={ss.assistantLogo} resizeMode="contain" />
+          </View>
+          <View style={ss.dotsRow}>
+            {[dot1, dot2, dot3].map((d, i) => (
+              <Animated.View key={i} style={[ss.dot, { opacity: d }]} />
+            ))}
+            <Text style={ss.thinkingText}>Searching the web...</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[ss.msgWrap, isUser ? ss.userWrap : ss.assistantWrap]}>
+      {msg.image && !isUser && null}
+      {isUser ? (
+        <View>
+          {msg.image && (
+            <Image source={{ uri: msg.image }} style={ss.attachedImage} resizeMode="cover" />
+          )}
+          <LinearGradient
+            colors={["#1E6FD9", "#1558B0"]}
+            style={ss.userBubble}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          >
+            <Text style={ss.userText}>{msg.content}</Text>
+          </LinearGradient>
+        </View>
+      ) : (
+        <View style={ss.assistantBubble}>
+          <View style={ss.assistantHeader}>
+            <Image source={LOGO} style={ss.assistantLogo} resizeMode="contain" />
+            {msg.focusMode && (
+              <View style={[ss.modeBadge, { backgroundColor: `${FOCUS_MODES.find(m => m.key === msg.focusMode)?.color}22` }]}>
+                <Ionicons name={FOCUS_MODES.find(m => m.key === msg.focusMode)?.icon as any} size={11} color={FOCUS_MODES.find(m => m.key === msg.focusMode)?.color || "#6EB4FF"} />
+                <Text style={[ss.modeBadgeText, { color: FOCUS_MODES.find(m => m.key === msg.focusMode)?.color || "#6EB4FF" }]}>
+                  {FOCUS_MODES.find(m => m.key === msg.focusMode)?.label || "Web"}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={ss.assistantText}>{msg.content}</Text>
+          {msg.sources && msg.sources.length > 0 && (
+            <View style={ss.sourcesWrap}>
+              <Text style={ss.sourcesLabel}>Sources</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ss.sourcesScroll}>
+                {msg.sources.map((s, i) => <SourceCard key={i} source={s} />)}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      )}
+      <Text style={[ss.timestamp, isUser ? ss.timestampRight : ss.timestampLeft]}>
+        {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </Text>
+    </View>
+  );
+}
+
+export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
-  const { settings, createChatThread, addChatMessage, setCurrentChatThreadId, getCurrentChatThread } = useSearch();
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "Hi! I'm StreekX AI. I can search the web in real time, answer questions, help with writing, math, and more.\n\nChoose a focus mode above, then ask me anything!",
+      timestamp: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<FocusMode>(FOCUS_MODES[0]);
+  const [showModes, setShowModes] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastResponse, setLastResponse] = useState<string>("");
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const panResponder = useRef<any>(null);
-
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-
-  useEffect(() => {
-    const id = createChatThread("New Chat");
-    setThreadId(id);
-    setCurrentChatThreadId(id);
-  }, []);
+  const flatListRef = useRef<FlatList>(null);
 
   useSpeechRecognitionEvent("result", (event) => {
-    const t = event.results[0]?.transcript || "";
-    if (event.isFinal && t) {
-      setIsListening(false);
-      processQuery(t);
+    if (event.results?.[0]?.transcript) {
+      setInput(prev => (prev ? prev + " " : "") + event.results[0].transcript);
     }
   });
   useSpeechRecognitionEvent("end", () => setIsListening(false));
   useSpeechRecognitionEvent("error", () => setIsListening(false));
 
-  async function startListening() {
-    try {
-      const p = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!p.granted) return;
-      setIsListening(true);
-      ExpoSpeechRecognitionModule.start({ lang: settings.voiceLanguage || "en-IN", interimResults: true });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (_) { setIsListening(false); }
-  }
-
-  function stopListening() {
-    ExpoSpeechRecognitionModule.stop();
-    setIsListening(false);
-  }
-
-  const processQuery = useCallback(async (query: string) => {
-    setIsLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    if (threadId) {
-      addChatMessage(threadId, { id: `msg-${Date.now()}`, type: "user", text: query, timestamp: Date.now() });
-    }
-
-    try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 30000);
-      const res = await fetch(
-        `${BASE_URL}/search?q=${encodeURIComponent(query)}&filter=all`,
-        { signal: controller.signal, headers: { Accept: "application/json" } }
-      );
-      clearTimeout(id);
-      const data = await res.json();
-      let raw: any[] = Array.isArray(data) ? data : (data.results || []);
-
-      const withDesc = raw.filter((i: any) =>
-        i.description &&
-        i.description !== "No description." &&
-        i.description !== "N/A" &&
-        i.description.length > 30
-      );
-
-      let answer = "";
-      if (withDesc.length > 0) {
-        const combined = withDesc.slice(0, 5).map((i: any) => i.description).join(" ");
-        const sentences = combined.match(/[^.!?]+[.!?]+/g) || [];
-        answer = sentences.slice(0, 4).join(" ").trim() || combined.slice(0, 400);
-      } else if (raw.length > 0) {
-        answer = `Based on search results, here are the top findings about "${query}": ${raw.slice(0, 3).map((i: any) => i.title).join(", ")}.`;
-      } else {
-        answer = `I couldn't find specific information about "${query}". Try rephrasing your question.`;
-      }
-
-      setLastResponse(answer);
-      if (threadId) {
-        addChatMessage(threadId, { id: `msg-${Date.now()}`, type: "assistant", text: answer, timestamp: Date.now() });
-      }
-
-      if (settings.voiceLanguage) {
-        setIsSpeaking(true);
-        Speech.speak(answer, {
-          language: settings.voiceLanguage || "en-IN",
-          rate: 0.92,
-          onDone: () => setIsSpeaking(false),
-          onStopped: () => setIsSpeaking(false),
-          onError: () => setIsSpeaking(false),
-        });
-      }
-    } catch (err: any) {
-      const errMsg = "Sorry, I couldn't connect. Please check your internet connection.";
-      setLastResponse(errMsg);
-      if (threadId) {
-        addChatMessage(threadId, { id: `msg-${Date.now()}`, type: "assistant", text: errMsg, timestamp: Date.now() });
-      }
-      if (settings.voiceLanguage) {
-        setIsSpeaking(true);
-        Speech.speak(errMsg, {
-          language: settings.voiceLanguage || "en-IN",
-          rate: 0.92,
-          onDone: () => setIsSpeaking(false),
-          onStopped: () => setIsSpeaking(false),
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [settings.voiceLanguage, threadId, addChatMessage]);
-
-  const scatterParticles = useCallback((x: number, y: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const distance = 80 + Math.random() * 40;
-      const endX = x + Math.cos(angle) * distance;
-      const endY = y + Math.sin(angle) * distance;
-
-      const particle: Particle = {
-        id: `${Date.now()}-${i}`,
-        x: new Animated.Value(0),
-        y: new Animated.Value(0),
-        opacity: new Animated.Value(1),
-      };
-
-      Animated.parallel([
-        Animated.timing(particle.x, {
-          toValue: endX - x,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particle.y, {
-          toValue: endY - y,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particle.opacity, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      newParticles.push(particle);
-    }
-    setParticles(newParticles);
-    setTimeout(() => setParticles([]), 700);
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
   }, []);
 
-  const isActive = isLoading || isListening;
+  const toggleVoice = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+      setIsListening(false);
+    } else {
+      try {
+        const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        if (!perm.granted) { Alert.alert("Permission needed", "Please allow microphone access."); return; }
+        setIsListening(true);
+        ExpoSpeechRecognitionModule.start({ lang: "en-US", interimResults: true, continuous: false });
+      } catch { setIsListening(false); }
+    }
+  }, [isListening]);
+
+  const pickImage = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert("Permission needed", "Please allow photo access."); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8, allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachedImage(result.assets[0].uri);
+    }
+  }, []);
+
+  const sendMessage = useCallback(async () => {
+    const text = input.trim();
+    if (!text && !attachedImage) return;
+    if (loading) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setLoading(true);
+    setInput("");
+    const imgUri = attachedImage;
+    setAttachedImage(null);
+
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: text || "Analyze this image",
+      image: imgUri || undefined,
+      timestamp: Date.now(),
+    };
+    const loadingMsg: Message = {
+      id: `l-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      loading: true,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+
+    try {
+      const searchQuery = text || "analyze image";
+      const modeParam = selectedMode.key === "academic" ? "scholar"
+        : selectedMode.key === "video" ? "videos"
+        : selectedMode.key === "creative" ? "images"
+        : "all";
+
+      const res = await fetch(
+        `${BASE_URL}/search?q=${encodeURIComponent(searchQuery)}&type=${modeParam}&region=wt-wt`,
+        { signal: AbortSignal.timeout(30000) }
+      );
+
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+
+      let aiContent = "";
+      const sources: Source[] = [];
+
+      if (data.ai_overview) aiContent = data.ai_overview;
+      else if (data.knowledge_card?.description) aiContent = data.knowledge_card.description;
+
+      if (data.results?.length) {
+        data.results.slice(0, 6).forEach((r: any) => {
+          sources.push({
+            title: r.title || "",
+            url: r.url || r.link || "",
+            snippet: r.description || r.snippet || "",
+          });
+        });
+        if (!aiContent && sources.length > 0) {
+          aiContent = sources.slice(0, 3)
+            .map(s => `${s.title}\n${s.snippet}`)
+            .filter(t => t.trim().length > 5)
+            .join("\n\n");
+        }
+      }
+
+      if (!aiContent && data.answer) aiContent = data.answer;
+      if (!aiContent && data.infobox) aiContent = data.infobox.content || data.infobox.description || "";
+      if (!aiContent) aiContent = sources.length > 0
+        ? `Here are the top results for "${searchQuery}".`
+        : `I couldn't find specific information about "${searchQuery}". Try rephrasing your question.`;
+
+      const aiMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: aiContent,
+        sources,
+        focusMode: selectedMode.key,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev.filter(m => !m.loading), aiMsg]);
+    } catch {
+      const errMsg: Message = {
+        id: `e-${Date.now()}`,
+        role: "assistant",
+        content: "Sorry, I couldn't get a response right now. Please check your connection and try again.",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev.filter(m => !m.loading), errMsg]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, attachedImage, selectedMode, loading]);
+
+  const topPad = Platform.OS === "web" ? 60 : insets.top;
+  const botPad = Platform.OS === "web" ? 20 : insets.bottom;
 
   return (
-    <View style={[styles.container, { paddingTop: topPad, paddingBottom: botPad }]}>
-      <LinearGradient
-        colors={["rgba(162,210,255,0.15)", "rgba(255,255,255,0)"]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }} end={{ x: 0.5, y: 0.6 }}
-      />
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#05050A" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <GalaxyBg />
 
-      <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
-        <Ionicons name="close" size={24} color={Colors.light.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[ss.header, { paddingTop: topPad }]}>
+        <TouchableOpacity style={ss.backBtn} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Image source={LOGO} style={ss.headerLogo} resizeMode="contain" />
+        <TouchableOpacity
+          style={[ss.modeBtn, { borderColor: `${selectedMode.color}55` }]}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowModes(v => !v); }}
+        >
+          <Ionicons name={selectedMode.icon as any} size={15} color={selectedMode.color} />
+          <Text style={[ss.modeBtnText, { color: selectedMode.color }]}>{selectedMode.label}</Text>
+          <Ionicons name={showModes ? "chevron-up" : "chevron-down"} size={13} color={selectedMode.color} />
+        </TouchableOpacity>
+      </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>StreekX AI</Text>
-
-        <View style={styles.orbWrapper}>
-          <ParticleOrb isActive={isActive} onParticleScatter={scatterParticles} />
-          {particles.map(p => (
-            <Animated.View
-              key={p.id}
-              style={[
-                styles.particle,
-                {
-                  transform: [
-                    { translateX: p.x },
-                    { translateY: p.y },
-                  ],
-                  opacity: p.opacity,
-                },
-              ]}
-            />
+      {/* Mode selector dropdown */}
+      {showModes && (
+        <View style={ss.modesDropdown}>
+          {FOCUS_MODES.map(mode => (
+            <TouchableOpacity
+              key={mode.key}
+              style={[ss.modeOption, selectedMode.key === mode.key && ss.modeOptionSelected]}
+              onPress={() => { setSelectedMode(mode); setShowModes(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            >
+              <Ionicons name={mode.icon as any} size={18} color={mode.color} />
+              <Text style={[ss.modeOptionText, { color: mode.color }]}>{mode.label}</Text>
+              {selectedMode.key === mode.key && (
+                <Ionicons name="checkmark-circle" size={16} color={mode.color} style={{ marginLeft: "auto" }} />
+              )}
+            </TouchableOpacity>
           ))}
         </View>
+      )}
 
-        <Text style={styles.status}>
-          {isListening ? "Listening..." : isLoading ? "Thinking..." : isSpeaking ? "Speaking..." : "Say something..."}
-        </Text>
+      {/* Messages */}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={m => m.id}
+        renderItem={({ item }) => <MessageBubble msg={item} />}
+        contentContainerStyle={[ss.msgList, { paddingBottom: botPad + 16 }]}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToBottom}
+        onLayout={scrollToBottom}
+      />
 
-        {lastResponse ? (
-          <View style={styles.responseBox}>
-            <Text style={styles.responseText}>{lastResponse}</Text>
-          </View>
-        ) : null}
+      {/* Attached image preview */}
+      {attachedImage && (
+        <View style={ss.attachPreview}>
+          <Image source={{ uri: attachedImage }} style={ss.attachThumb} />
+          <Text style={ss.attachLabel}>Image attached</Text>
+          <TouchableOpacity onPress={() => setAttachedImage(null)} style={{ marginLeft: "auto" }}>
+            <Ionicons name="close-circle" size={22} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Input bar */}
+      <View style={[ss.inputBar, { paddingBottom: botPad + 6 }]}>
+        <TouchableOpacity style={ss.inputAction} onPress={pickImage}>
+          <Ionicons name="attach" size={22} color="rgba(255,255,255,0.55)" />
+        </TouchableOpacity>
+
+        <TextInput
+          style={ss.textInput}
+          value={input}
+          onChangeText={setInput}
+          placeholder={isListening ? "Listening..." : "Ask anything..."}
+          placeholderTextColor={isListening ? "#EF4444" : "rgba(255,255,255,0.35)"}
+          multiline
+          maxLength={2000}
+          returnKeyType="default"
+          blurOnSubmit={false}
+          selectionColor="#6EB4FF"
+        />
+
+        <TouchableOpacity
+          style={[ss.inputAction, isListening && ss.voiceActive]}
+          onPress={toggleVoice}
+        >
+          <Ionicons
+            name={isListening ? "mic" : "mic-outline"}
+            size={22}
+            color={isListening ? "#EF4444" : "rgba(255,255,255,0.55)"}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[ss.sendBtn, (!input.trim() && !attachedImage) && ss.sendBtnDisabled]}
+          onPress={sendMessage}
+          disabled={loading || (!input.trim() && !attachedImage)}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="arrow-up" size={20} color="#fff" />
+          )}
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.footer}>
-        {!isListening && !isLoading && (
-          <TouchableOpacity
-            style={[styles.micBtn, { opacity: isSpeaking ? 0.6 : 1 }]}
-            onPress={startListening}
-            disabled={isSpeaking}
-          >
-            <LinearGradient colors={["#1E6FD9", "#0EA5E9"]} style={styles.micGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Ionicons name="mic-outline" size={28} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {isListening && (
-          <TouchableOpacity style={[styles.micBtn, styles.micBtnActive]} onPress={stopListening}>
-            <LinearGradient colors={["#EF4444", "#DC2626"]} style={styles.micGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Ionicons name="mic" size={28} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {isSpeaking && (
-          <TouchableOpacity
-            style={[styles.micBtn, styles.micBtnActive]}
-            onPress={() => {
-              Speech.stop();
-              setIsSpeaking(false);
-            }}
-          >
-            <LinearGradient colors={["#F59E0B", "#D97706"]} style={styles.micGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Ionicons name="volume-high" size={28} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#05050A",
-    justifyContent: "space-between",
-  },
-  closeBtn: {
-    position: "absolute",
-    top: 12,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
+const ss = StyleSheet.create({
+  header: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 14, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)",
     zIndex: 10,
   },
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
+  backBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    alignItems: "center", justifyContent: "center", marginRight: 8,
   },
-  title: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 18,
-    color: "#FFFFFF",
-    marginBottom: 40,
-  },
-  orbWrapper: {
-    width: 220,
-    height: 220,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 30,
-  },
-  orbContainer: {
-    width: 200,
-    height: 200,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ring3: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(110,180,255,0.10)",
-  },
-  ring2: {
-    position: "absolute",
-    width: 164,
-    height: 164,
-    borderRadius: 82,
-    backgroundColor: "rgba(110,180,255,0.12)",
+  headerLogo: { flex: 1, height: 34 },
+  modeBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 20, paddingVertical: 7, paddingHorizontal: 11,
     borderWidth: 1,
-    borderColor: "rgba(110,180,255,0.35)",
   },
-  ring1: {
-    width: 136,
-    height: 136,
-    borderRadius: 68,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#6EB4FF",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
+  modeBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+
+  modesDropdown: {
+    position: "absolute", right: 14, zIndex: 200,
+    backgroundColor: "#0F0F20",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    padding: 6,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.7, shadowRadius: 24, elevation: 24,
+    top: 95,
   },
-  grad: { ...StyleSheet.absoluteFillObject },
-  orbIcon: { position: "absolute" },
-  particle: {
-    position: "absolute",
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#6EB4FF",
+  modeOption: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10,
+    minWidth: 170,
   },
-  status: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 16,
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    marginBottom: 20,
+  modeOptionSelected: { backgroundColor: "rgba(255,255,255,0.07)" },
+  modeOptionText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+
+  msgList: { paddingHorizontal: 14, paddingTop: 14, flexGrow: 1 },
+
+  msgWrap: { marginBottom: 18 },
+  userWrap: { alignItems: "flex-end" },
+  assistantWrap: { alignItems: "flex-start" },
+
+  userBubble: {
+    maxWidth: W * 0.78, borderRadius: 20, borderBottomRightRadius: 5,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  responseBox: {
-    maxWidth: "90%",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
+  userText: { fontFamily: "Inter_400Regular", fontSize: 15, color: "#fff", lineHeight: 22 },
+
+  assistantBubble: {
+    maxWidth: W * 0.90,
+    backgroundColor: "rgba(255,255,255,0.055)",
+    borderRadius: 20, borderBottomLeftRadius: 5,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.09)",
   },
-  responseText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
-    lineHeight: 22,
-    textAlign: "center",
+  assistantHeader: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 8 },
+  assistantLogo: { width: 55, height: 18 },
+  modeBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
-  footer: {
-    alignItems: "center",
-    paddingBottom: 30,
+  modeBadgeText: { fontFamily: "Inter_500Medium", fontSize: 11 },
+  assistantText: { fontFamily: "Inter_400Regular", fontSize: 15, color: "rgba(255,255,255,0.9)", lineHeight: 24 },
+
+  thinkingBubble: {
+    backgroundColor: "rgba(255,255,255,0.055)",
+    borderRadius: 20, borderBottomLeftRadius: 5,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.09)",
   },
-  micBtn: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    overflow: "hidden",
+  dotsRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#6EB4FF" },
+  thinkingText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "rgba(255,255,255,0.45)", marginLeft: 4 },
+
+  sourcesWrap: { marginTop: 14 },
+  sourcesLabel: {
+    fontFamily: "Inter_600SemiBold", fontSize: 11,
+    color: "rgba(255,255,255,0.45)", marginBottom: 8,
+    textTransform: "uppercase", letterSpacing: 0.8,
   },
-  micBtnActive: {},
-  micGrad: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+  sourcesScroll: { marginHorizontal: -4 },
+  sourceCard: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+    marginRight: 8, maxWidth: 185,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
+  sourceFavicon: { width: 18, height: 18, borderRadius: 4 },
+  sourceInfo: { flex: 1 },
+  sourceTitle: { fontFamily: "Inter_500Medium", fontSize: 11, color: "rgba(255,255,255,0.85)" },
+  sourceDomain: { fontFamily: "Inter_400Regular", fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 1 },
+
+  timestamp: { fontFamily: "Inter_400Regular", fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 4 },
+  timestampRight: { textAlign: "right" },
+  timestampLeft: { textAlign: "left" },
+
+  attachedImage: { width: W * 0.65, height: 180, borderRadius: 14, marginBottom: 6 },
+
+  attachPreview: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.07)", gap: 10,
+  },
+  attachThumb: { width: 42, height: 42, borderRadius: 8 },
+  attachLabel: { fontFamily: "Inter_500Medium", fontSize: 13, color: "rgba(255,255,255,0.7)" },
+
+  inputBar: {
+    flexDirection: "row", alignItems: "flex-end",
+    paddingHorizontal: 10, paddingTop: 10,
+    backgroundColor: "rgba(8,6,18,0.98)",
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)",
+    gap: 6,
+  },
+  inputAction: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    marginBottom: 0,
+  },
+  voiceActive: { backgroundColor: "rgba(239,68,68,0.18)" },
+  textInput: {
+    flex: 1, minHeight: 40, maxHeight: 120,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 22, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
+    fontFamily: "Inter_400Regular", fontSize: 15, color: "#fff",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  },
+  sendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#1E6FD9", alignItems: "center", justifyContent: "center",
+    shadowColor: "#1E6FD9", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5, shadowRadius: 10, elevation: 6,
+  },
+  sendBtnDisabled: { backgroundColor: "rgba(30,111,217,0.25)", shadowOpacity: 0 },
 });
