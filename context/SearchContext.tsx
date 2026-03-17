@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE_URL = "https://discover-main-crawler-streekx.onrender.com";
+const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
 
 export interface SearchResult {
   id: string;

@@ -14,7 +14,7 @@ import GalaxyBackground from "@/components/GalaxyBackground";
 
 const { width } = Dimensions.get("window");
 const PLACEHOLDER = require("@/assets/images/icon.png");
-const BASE_URL = "https://discover-main-crawler-streekx.onrender.com";
+const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
 
 const CATEGORIES = [
   { key: "all",           label: "For You",       icon: "star-outline",           query: "trending news today 2025" },

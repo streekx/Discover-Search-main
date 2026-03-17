@@ -18,7 +18,7 @@ import { useSearch } from "@/context/SearchContext";
 import GalaxyBackground from "@/components/GalaxyBackground";
 
 const { width } = Dimensions.get("window");
-const BASE_URL = "https://discover-main-crawler-streekx.onrender.com";
+const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
 
 import { Dimensions } from "react-native";
 
