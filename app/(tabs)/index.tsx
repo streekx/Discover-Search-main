@@ -23,7 +23,7 @@ import DynamicDiscoverTile from "@/components/DynamicDiscoverTile";
 const { width: W, height: H } = Dimensions.get("window");
 const C = Colors.dark;
 
-const LOGO = require("@/assets/images/logo.jpg");
+const LOGO = require("@/assets/images/logo.png");
 
 const TRENDING = [
   "AI News", "Budget 2025", "IPL Score", "Gold Price",
@@ -161,6 +161,11 @@ export default function HomeScreen() {
     router.push("/ai-mode");
   }, []);
 
+  const handleCam = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/streekx-cam");
+  }, []);
+
   const navItems = [
     { label: "History", icon: "time-outline", path: "/(tabs)/history" },
     { label: "Saved", icon: "bookmark-outline", path: "/(tabs)/saved" },
@@ -206,17 +211,23 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       <View style={styles.aiShortcuts}>
-        <TouchableOpacity style={styles.aiShortcut} onPress={handleAiMode} activeOpacity={0.8}>
-          <View style={styles.aiIconWrapper}>
-            <MaterialCommunityIcons name="creation" size={18} color={C.tint} />
+        <TouchableOpacity style={styles.aiShortcut} onPress={handleAi} activeOpacity={0.8}>
+          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(110,180,255,0.14)" }]}>
+            <MaterialCommunityIcons name="creation" size={18} color="#6EB4FF" />
           </View>
           <Text style={styles.aiShortcutText}>AI Mode</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.aiShortcut} onPress={handleAi} activeOpacity={0.8}>
-          <View style={styles.aiIconWrapper}>
-            <MaterialCommunityIcons name="robot-outline" size={18} color={C.tint} />
+        <TouchableOpacity style={styles.aiShortcut} onPress={handleAiMode} activeOpacity={0.8}>
+          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(167,139,250,0.14)" }]}>
+            <Ionicons name="mic-outline" size={18} color="#A78BFA" />
           </View>
-          <Text style={styles.aiShortcutText}>AI Chat</Text>
+          <Text style={styles.aiShortcutText}>AI Assistant</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.aiShortcut} onPress={handleCam} activeOpacity={0.8}>
+          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(52,211,153,0.14)" }]}>
+            <Ionicons name="scan-outline" size={18} color="#34D399" />
+          </View>
+          <Text style={styles.aiShortcutText}>StreekX Cam</Text>
         </TouchableOpacity>
       </View>
 

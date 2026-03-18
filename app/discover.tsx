@@ -13,7 +13,7 @@ import { useSearch } from "@/context/SearchContext";
 import GalaxyBackground from "@/components/GalaxyBackground";
 
 const { width: W } = Dimensions.get("window");
-const LOGO = require("@/assets/images/logo.jpg");
+const LOGO = require("@/assets/images/logo.png");
 const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
 
 const CATEGORIES = [

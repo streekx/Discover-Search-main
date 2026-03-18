@@ -18,7 +18,7 @@ import { useSearch, SearchFilter, SearchResult } from "@/context/SearchContext";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import GalaxyBackground from "@/components/GalaxyBackground";
 
-const PLACEHOLDER_IMAGE = require("@/assets/images/logo.jpg");
+const PLACEHOLDER_IMAGE = require("@/assets/images/logo.png");
 
 const isValidImageUrl = (url: string | null | undefined): boolean => {
   if (!url || typeof url !== "string") return false;
@@ -455,7 +455,7 @@ export default function SearchScreen() {
     return null;
   }
 
-  const numCols = activeFilter === "images" ? 2 : 1;
+  const numCols = activeFilter === "images" ? 3 : 1;
 
   return (
     <View style={styles.container}>
@@ -989,23 +989,23 @@ const styles = StyleSheet.create({
 
   imageCard: {
     flex: 1,
-    margin: 3,
-    borderRadius: 8,
+    margin: 2,
+    borderRadius: 6,
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.08)",
-    maxWidth: (width - 18) / 2,
+    maxWidth: (width - 12) / 3,
   },
-  imageThumb: { width: "100%", aspectRatio: 1 },
+  imageThumb: { width: "100%", height: 110 },
   imageFooter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    padding: 6,
-    backgroundColor: "rgba(10,8,25,0.88)",
+    gap: 4,
+    padding: 4,
+    backgroundColor: "rgba(10,8,25,0.9)",
   },
-  imageFav: { width: 14, height: 14, borderRadius: 7 },
+  imageFav: { width: 12, height: 12, borderRadius: 6 },
   imageDomain: {
-    fontSize: 11,
+    fontSize: 10,
     color: "rgba(255,255,255,0.55)",
     fontFamily: "Inter_400Regular",
     flex: 1,

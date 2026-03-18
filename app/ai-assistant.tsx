@@ -17,7 +17,7 @@ import {
 
 const { width: W } = Dimensions.get("window");
 const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
-const LOGO = require("@/assets/images/logo.jpg");
+const LOGO = require("@/assets/images/logo.png");
 
 type FocusMode = { key: string; label: string; icon: string; color: string };
 const FOCUS_MODES: FocusMode[] = [
