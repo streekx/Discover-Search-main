@@ -536,7 +536,7 @@ export default function SearchScreen() {
                 value={inputValue}
                 onChangeText={setInputValue}
                 onSubmitEditing={() => handleSearch()}
-                placeholder="Search StreekX..."
+                placeholder="Search Grim..."
                 placeholderTextColor="rgba(255,255,255,0.38)"
                 returnKeyType="search"
                 autoCapitalize="none"

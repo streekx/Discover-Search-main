@@ -49,7 +49,7 @@ export default function SettingsScreen() {
         text: "Clear All", style: "destructive",
         onPress: async () => {
           clearHistory();
-          await AsyncStorage.multiRemove(["streekx_history", "streekx_saved", "streekx_settings"]);
+          await AsyncStorage.multiRemove(["grim_history", "grim_saved", "grim_settings"]);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
       },
@@ -158,8 +158,8 @@ export default function SettingsScreen() {
 
         <SectionGroup title="About">
           <SettingRow icon="information-circle-outline" iconColor="#6EB4FF" label="Version"
-            sublabel="StreekX 1.0.0" right={<View />} />
-          <TouchableOpacity onPress={() => Linking.openURL("https://streekx.app/privacy")}>
+            sublabel="Grim 1.0.0" right={<View />} />
+          <TouchableOpacity onPress={() => Linking.openURL("https://grim.app/privacy")}>
             <SettingRow icon="document-text-outline" iconColor="#A78BFA" label="Privacy Policy"
               sublabel="View our privacy policy"
               right={<Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.35)" />} />

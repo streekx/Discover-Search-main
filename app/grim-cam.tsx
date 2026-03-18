@@ -13,7 +13,7 @@ import * as Haptics from "expo-haptics";
 const { width: W, height: H } = Dimensions.get("window");
 const LOGO = require("@/assets/images/logo.png");
 const BG = require("@/assets/images/galaxy_bg.jpg");
-const BASE_URL = "https://yesansh-streekx-search-api.hf.space";
+const BASE_URL = "https://yesansh-grim-search-api.hf.space";
 
 type Mode = "home" | "scanning" | "result";
 
@@ -24,7 +24,7 @@ interface VisualResult {
   media?: string;
 }
 
-export default function StreekXCam() {
+export default function GrimCam() {
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>("home");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function StreekXCam() {
 
         <View style={ss.scanBottom}>
           <ActivityIndicator size="large" color="#6EB4FF" />
-          <Text style={ss.scanHint}>StreekX is analyzing your image with AI...</Text>
+          <Text style={ss.scanHint}>Grim is analyzing your image with AI...</Text>
         </View>
       </View>
     );
@@ -251,7 +251,7 @@ export default function StreekXCam() {
         <Image source={LOGO} style={ss.headerLogo} resizeMode="contain" />
         <View style={ss.camBadge}>
           <MaterialCommunityIcons name="eye-scan" size={14} color="#34D399" />
-          <Text style={ss.camBadgeText}>StreekX Cam</Text>
+          <Text style={ss.camBadgeText}>Grim Cam</Text>
         </View>
       </View>
 
@@ -276,7 +276,7 @@ export default function StreekXCam() {
           </View>
         )}
 
-        <Text style={ss.actionsLabel}>Search with StreekX Cam</Text>
+        <Text style={ss.actionsLabel}>Search with Grim Cam</Text>
 
         <View style={ss.actionRow}>
           <TouchableOpacity style={ss.actionBtn} onPress={openCamera} activeOpacity={0.82}>

@@ -30,7 +30,7 @@ function RootLayoutNav() {
       <Stack.Screen name="browser" options={{ headerShown: false, animation: "slide_from_bottom" }} />
       <Stack.Screen name="ai-assistant" options={{ headerShown: false, animation: "slide_from_bottom" }} />
       <Stack.Screen name="ai-mode" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="streekx-cam" options={{ headerShown: false, animation: "slide_from_bottom" }} />
+      <Stack.Screen name="grim-cam" options={{ headerShown: false, animation: "slide_from_bottom" }} />
       <Stack.Screen name="discover" options={{ headerShown: false, animation: "slide_from_right" }} />
     </Stack>
   );

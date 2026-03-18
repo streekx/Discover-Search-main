@@ -166,7 +166,7 @@ export default function AIChatScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm StreekX AI. I can search the web in real time, answer questions, help with writing, math, and more.\n\nChoose a focus mode above, then ask me anything!",
+      content: "Hi! I'm Grim AI. I can search the web in real time, answer questions, help with writing, math, and more.\n\nChoose a focus mode above, then ask me anything!",
       timestamp: Date.now(),
     },
   ]);

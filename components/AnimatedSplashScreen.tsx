@@ -1,5 +1,5 @@
 /**
- * StreekX — Production-Grade Splash Screen
+ * Grim — Production-Grade Splash Screen
  * Comparable to Comet Browser quality with physics-based animations
  *
  * Features:
@@ -323,7 +323,7 @@ export default function AnimatedSplashScreen({ onFinish }: { onFinish: () => voi
         </View>
         
         {/* Branding text below logo */}
-        <Text style={styles.streekxText}>STREEKX</Text>
+        <Text style={styles.streekxText}>GRIM</Text>
         <Text style={styles.tagline}>Search Engine</Text>
       </Animated.View>
 

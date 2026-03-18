@@ -163,7 +163,7 @@ export default function HomeScreen() {
 
   const handleCam = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/streekx-cam");
+    router.push("/grim-cam");
   }, []);
 
   const navItems = [
@@ -227,7 +227,7 @@ export default function HomeScreen() {
           <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(52,211,153,0.14)" }]}>
             <Ionicons name="scan-outline" size={18} color="#34D399" />
           </View>
-          <Text style={styles.aiShortcutText}>StreekX Cam</Text>
+          <Text style={styles.aiShortcutText}>Grim Cam</Text>
         </TouchableOpacity>
       </View>
 

@@ -187,7 +187,7 @@ export default function SearchInputScreen() {
                 value={inputValue}
                 onChangeText={setInputValue}
                 onSubmitEditing={() => doSearch(inputValue)}
-                placeholder="Search StreekX..."
+                placeholder="Search Grim..."
                 placeholderTextColor={Colors.light.textMuted}
                 returnKeyType="search"
                 autoCapitalize="none"
