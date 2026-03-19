@@ -10,12 +10,15 @@ import {
   Modal,
   Dimensions,
   Image,
+  Linking,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { useSearch } from "@/context/SearchContext";
 import DynamicDiscoverTile from "@/components/DynamicDiscoverTile";
@@ -24,6 +27,9 @@ const { width: W, height: H } = Dimensions.get("window");
 const C = Colors.dark;
 
 const LOGO = require("@/assets/images/logo.png");
+const STATIC_DOODLE = require("@/assets/images/doodle.png");
+
+const DOODLE_CACHE_KEY = "grim_doodle_cache";
 
 const TRENDING = [
   "AI News", "Budget 2025", "IPL Score", "Gold Price",
@@ -120,6 +126,86 @@ function GalaxyBackground() {
   );
 }
 
+type DoodleData = {
+  type: "image" | "animation" | "interactive";
+  image_url: string | null;
+  click_action: string | null;
+  alt: string;
+};
+
+function DoodleSection() {
+  const [doodle, setDoodle] = useState<DoodleData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    async function loadDoodle() {
+      try {
+        const cached = await AsyncStorage.getItem(DOODLE_CACHE_KEY);
+        if (cached) {
+          const parsed: DoodleData = JSON.parse(cached);
+          setDoodle(parsed);
+          setLoading(false);
+          fadeIn();
+        }
+      } catch {}
+
+      try {
+        const res = await fetch("/api/doodle", { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data: DoodleData = await res.json();
+          await AsyncStorage.setItem(DOODLE_CACHE_KEY, JSON.stringify(data));
+          setDoodle(data);
+        }
+      } catch {}
+
+      setLoading(false);
+      fadeIn();
+    }
+
+    loadDoodle();
+  }, []);
+
+  function fadeIn() {
+    Animated.timing(fadeAnim, {
+      toValue: 1, duration: 500, useNativeDriver: true,
+    }).start();
+  }
+
+  function handlePress() {
+    if (!doodle) return;
+    const url = doodle.click_action;
+    if (url) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Linking.openURL(url).catch(() => {});
+    }
+  }
+
+  const showImage = !loading && (!doodle || !doodle.image_url);
+  const showRemoteImage = !loading && doodle && doodle.image_url && doodle.type === "image";
+
+  return (
+    <Animated.View style={[styles.doodleContainer, { opacity: fadeAnim }]}>
+      {loading && (
+        <ActivityIndicator size="small" color="rgba(255,255,255,0.3)" style={{ height: 110 }} />
+      )}
+      {(showImage || showRemoteImage) && (
+        <TouchableOpacity
+          onPress={handlePress}
+          activeOpacity={doodle?.click_action ? 0.8 : 1}
+          disabled={!doodle?.click_action}
+        >
+          <Image
+            source={showRemoteImage && doodle?.image_url ? { uri: doodle.image_url } : STATIC_DOODLE}
+            style={styles.doodleImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      )}
+    </Animated.View>
+  );
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { history, search, settings } = useSearch();
@@ -191,10 +277,13 @@ export default function HomeScreen() {
         opacity: logoAnim,
         transform: [{ translateY: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
       }]}>
-        <Image source={LOGO} style={styles.logoImage} resizeMode="contain" />
-        <Text style={styles.tagline}>
-          {settings.incognitoMode ? "🕶 Incognito — not saving searches" : "Search anything, find everything"}
-        </Text>
+        <DoodleSection />
+        {!settings.incognitoMode && (
+          <Text style={styles.tagline}>Search anything, find everything</Text>
+        )}
+        {settings.incognitoMode && (
+          <Text style={styles.tagline}>🕶 Incognito — not saving searches</Text>
+        )}
       </Animated.View>
 
       <TouchableOpacity style={styles.searchBar} onPress={handleSearchBarTap} activeOpacity={0.9}>
@@ -211,23 +300,17 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       <View style={styles.aiShortcuts}>
-        <TouchableOpacity style={styles.aiShortcut} onPress={handleAi} activeOpacity={0.8}>
-          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(110,180,255,0.14)" }]}>
-            <MaterialCommunityIcons name="creation" size={18} color="#6EB4FF" />
-          </View>
-          <Text style={styles.aiShortcutText}>AI Mode</Text>
+        <TouchableOpacity style={styles.aiShortcutWide} onPress={handleAi} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="creation" size={16} color="#6EB4FF" style={{ marginRight: 6 }} />
+          <Text style={styles.aiShortcutLabel}>AI Mode</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.aiShortcut} onPress={handleAiMode} activeOpacity={0.8}>
-          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(167,139,250,0.14)" }]}>
-            <Ionicons name="mic-outline" size={18} color="#A78BFA" />
-          </View>
-          <Text style={styles.aiShortcutText}>AI Assistant</Text>
+
+        <TouchableOpacity style={styles.aiShortcutCompact} onPress={handleAiMode} activeOpacity={0.8}>
+          <Ionicons name="mic-outline" size={18} color="#A78BFA" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.aiShortcut} onPress={handleCam} activeOpacity={0.8}>
-          <View style={[styles.aiIconWrapper, { backgroundColor: "rgba(52,211,153,0.14)" }]}>
-            <Ionicons name="scan-outline" size={18} color="#34D399" />
-          </View>
-          <Text style={styles.aiShortcutText}>Grim Cam</Text>
+
+        <TouchableOpacity style={styles.aiShortcutCompact} onPress={handleCam} activeOpacity={0.8}>
+          <Ionicons name="scan-outline" size={18} color="#34D399" />
         </TouchableOpacity>
       </View>
 
@@ -272,7 +355,7 @@ const styles = StyleSheet.create({
 
   topBar: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginBottom: 24, marginTop: 12,
+    marginBottom: 16, marginTop: 12,
   },
   menuBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -281,11 +364,19 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
 
-  logoSection: { alignItems: "center", marginBottom: 28 },
-  logoImage: { width: W * 0.52, height: 80 },
+  logoSection: { alignItems: "center", marginBottom: 20 },
   tagline: {
-    fontFamily: "Inter_400Regular", fontSize: 13,
-    color: C.textSecondary, textAlign: "center", marginTop: 6,
+    fontFamily: "Inter_400Regular", fontSize: 12,
+    color: C.textSecondary, textAlign: "center", marginTop: 4,
+  },
+
+  doodleContainer: {
+    alignItems: "center", justifyContent: "center",
+    width: "100%", minHeight: 110,
+  },
+  doodleImage: {
+    width: W * 0.72,
+    height: 110,
   },
 
   searchBar: {
@@ -293,7 +384,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.07)",
     borderRadius: 32, paddingHorizontal: 18, height: 62,
     borderWidth: 1.5, borderColor: "rgba(152,152,176,0.35)",
-    marginBottom: 20,
+    marginBottom: 14,
     shadowColor: "rgba(152,152,176,0.3)",
     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 14, elevation: 6,
   },
@@ -301,19 +392,40 @@ const styles = StyleSheet.create({
   searchRight: { flexDirection: "row", alignItems: "center", gap: 4 },
   iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
 
-  aiShortcuts: { flexDirection: "row", gap: 12, marginBottom: 24 },
-  aiShortcut: {
-    flex: 1, flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+  aiShortcuts: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 22,
+    alignItems: "center",
   },
-  aiIconWrapper: {
-    width: 28, height: 28, borderRadius: 8,
-    backgroundColor: "rgba(152,152,176,0.14)",
-    alignItems: "center", justifyContent: "center", marginRight: 8,
+  aiShortcutWide: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    flex: 2,
   },
-  aiShortcutText: { fontFamily: "Inter_500Medium", fontSize: 13, color: C.text },
+  aiShortcutLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: C.text,
+    letterSpacing: 0.1,
+  },
+  aiShortcutCompact: {
+    flex: 1,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingVertical: 9,
+  },
 
   trendingSection: { marginBottom: 20 },
   trendingLabel: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: C.text, marginBottom: 12 },
