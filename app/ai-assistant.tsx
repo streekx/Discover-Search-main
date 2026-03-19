@@ -76,41 +76,47 @@ function SourceCard({ source }: { source: Source }) {
   );
 }
 
+function ThinkingBubble() {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const makeAnim = (val: Animated.Value, delay: number) =>
+      Animated.loop(Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(val, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+      ]));
+    const a1 = makeAnim(dot1, 0);
+    const a2 = makeAnim(dot2, 180);
+    const a3 = makeAnim(dot3, 360);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
+
+  return (
+    <View style={[ss.msgWrap, ss.assistantWrap]}>
+      <View style={ss.thinkingBubble}>
+        <View style={ss.assistantHeader}>
+          <Image source={LOGO} style={ss.assistantLogo} resizeMode="contain" />
+        </View>
+        <View style={ss.dotsRow}>
+          {[dot1, dot2, dot3].map((d, i) => (
+            <Animated.View key={i} style={[ss.dot, { opacity: d }]} />
+          ))}
+          <Text style={ss.thinkingText}>Searching the web...</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === "user";
 
   if (msg.loading) {
-    const dot1 = useRef(new Animated.Value(0.3)).current;
-    const dot2 = useRef(new Animated.Value(0.3)).current;
-    const dot3 = useRef(new Animated.Value(0.3)).current;
-    useEffect(() => {
-      const makeAnim = (val: Animated.Value, delay: number) =>
-        Animated.loop(Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0.3, duration: 400, useNativeDriver: true }),
-        ]));
-      const a1 = makeAnim(dot1, 0);
-      const a2 = makeAnim(dot2, 180);
-      const a3 = makeAnim(dot3, 360);
-      a1.start(); a2.start(); a3.start();
-      return () => { a1.stop(); a2.stop(); a3.stop(); };
-    }, []);
-    return (
-      <View style={[ss.msgWrap, ss.assistantWrap]}>
-        <View style={ss.thinkingBubble}>
-          <View style={ss.assistantHeader}>
-            <Image source={LOGO} style={ss.assistantLogo} resizeMode="contain" />
-          </View>
-          <View style={ss.dotsRow}>
-            {[dot1, dot2, dot3].map((d, i) => (
-              <Animated.View key={i} style={[ss.dot, { opacity: d }]} />
-            ))}
-            <Text style={ss.thinkingText}>Searching the web...</Text>
-          </View>
-        </View>
-      </View>
-    );
+    return <ThinkingBubble />;
   }
 
   return (
@@ -210,7 +216,7 @@ export default function AIChatScreen() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert("Permission needed", "Please allow photo access."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.8, allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {

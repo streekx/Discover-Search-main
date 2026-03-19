@@ -45,6 +45,9 @@ const FILTERS: { key: SearchFilter; label: string }[] = [
 function getDomain(url: string): string {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url.slice(0, 30); }
 }
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 function getUrlBreadcrumb(url: string): string {
   try {
     const u = new URL(url);
@@ -249,7 +252,7 @@ export default function SearchScreen() {
       <View style={styles.relatedCard}>
         <Text style={styles.relatedTitle}>Searches related to {query}</Text>
         {relatedSearches.map((term, idx) => {
-          const parts = term.split(new RegExp(`(${query})`, "gi"));
+          const parts = term.split(new RegExp(`(${escapeRegex(query)})`, "gi"));
           return (
             <TouchableOpacity
               key={idx}

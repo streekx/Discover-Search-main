@@ -151,7 +151,10 @@ function DoodleSection() {
       } catch {}
 
       try {
-        const res = await fetch("/api/doodle", { signal: AbortSignal.timeout(5000) });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch("/api/doodle", { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const data: DoodleData = await res.json();
           await AsyncStorage.setItem(DOODLE_CACHE_KEY, JSON.stringify(data));

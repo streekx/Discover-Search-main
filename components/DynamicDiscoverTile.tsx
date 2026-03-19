@@ -52,9 +52,12 @@ export default function DynamicDiscoverTile() {
 
   async function fetchRealImages() {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       const res = await fetch("https://discover-main-crawler-streekx.onrender.com/discover", {
-        signal: AbortSignal.timeout(10000),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         const raw: any[] = Array.isArray(data) ? data : (data.results || data.data || []);

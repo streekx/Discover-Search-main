@@ -227,7 +227,7 @@ export default function GrimCam() {
                 {item.description && (
                   <Text style={ss.rDesc} numberOfLines={2}>{item.description}</Text>
                 )}
-                <Text style={ss.rUrl} numberOfLines={1}>{new URL(item.url).hostname.replace("www.", "")}</Text>
+                <Text style={ss.rUrl} numberOfLines={1}>{(() => { try { return new URL(item.url).hostname.replace("www.", ""); } catch { return item.url.slice(0, 30); } })()}</Text>
               </View>
               <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.35)" />
             </TouchableOpacity>
