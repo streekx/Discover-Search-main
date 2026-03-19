@@ -13,7 +13,9 @@
     "db:push": "drizzle-kit push",
     "start": "npx expo start",
     "lint": "npx expo lint",
-    "lint:fix": "npx expo lint --fix"
+    "lint:fix": "npx expo lint --fix",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo-google-fonts/caveat": "^0.4.2",
@@ -28,7 +30,6 @@
     "eas": "^0.1.0",
     "esbuild": "^0.27.4",
     "expo": "~54.0.27",
-    "expo-app": "^0.9.22",
     "expo-av": "^16.0.8",
     "expo-blur": "~15.0.8",
     "expo-clipboard": "^55.0.8",
